@@ -1367,218 +1367,77 @@
             lip_conc_max: 5
         };
 
-        // Initialize Raw Materials (Adding items)
+        // FUNCIÓN MEJORADA: Llena los selectores dinámicamente desde la Base de Datos
         function initRawMaterials() {
-            // LIMPIEZA PREVIA (Para evitar duplicados al recargar)
-            const idsToClean = ['sel-prot', 'sel-hc', 'sel-lip', 'sel-vit-1', 'sel-vit-2', 'sel-vit-3', 'sel-bolsa', 'sel-fungible'];
-            idsToClean.forEach(id => {
-                const el = document.getElementById(id);
-                if(el) el.length = 1; // Mantiene solo la opción "Seleccionar..."
-            });
-            // Limpieza de listas fijas (Opcional, si quisieras editarlas también)
-            ['sel-fosfato', 'sel-sodio', 'sel-calcio', 'sel-api', 'sel-magnesio'].forEach(id => {
-                 const el = document.getElementById(id);
-                 if(el) el.innerHTML = ''; 
-            });
-            
-            const selProt = document.getElementById('sel-prot');
-            const selHc = document.getElementById('sel-hc'); 
-            const selLip = document.getElementById('sel-lip'); 
-            const selFosfato = document.getElementById('sel-fosfato');
-            const selSodio = document.getElementById('sel-sodio');
-            const selCalcio = document.getElementById('sel-calcio');
-            const selApi = document.getElementById('sel-api');
-            const selBolsa = document.getElementById('sel-bolsa');
-            const selFungible = document.getElementById('sel-fungible');
-            
-            // New selectors for vitamins/additives (3 slots + 1 conditional)
-            const selVits = [
-                document.getElementById('sel-vit-1'),
-                document.getElementById('sel-vit-2'),
-                document.getElementById('sel-vit-3')
-            ];
-            const selVit4 = document.getElementById('sel-vit-4');
+            // Helper para limpiar y llenar un selector
+            const populateSelect = (selectId, category, filterFn = null) => {
+                const el = document.getElementById(selectId);
+                if (!el) return;
 
-            // Populate Proteins
-            if (selProt && selProt.options.length === 1) { 
-                const p1 = materiasPrimas.proteinas.aminoplasmal_15;
-                const opt1 = document.createElement('option');
-                opt1.value = "aminoplasmal_15";
-                opt1.text = `${p1.nombre} (CN: ${p1.codigo_nacional})`;
-                selProt.add(opt1);
+                // Guardar la selección actual si es posible
+                const previousValue = el.value;
 
-                const p2 = materiasPrimas.proteinas.aminosteril_hepa_8;
-                const opt2 = document.createElement('option');
-                opt2.value = "aminosteril_hepa_8";
-                opt2.text = `${p2.nombre} (CN: ${p2.codigo_nacional}) [HEPÁTICO]`;
-                opt2.style.color = "#d97706"; 
-                opt2.style.fontWeight = "bold";
-                selProt.add(opt2);
+                // Limpiar (Dejar solo la opción por defecto)
+                el.innerHTML = '<option value="">Seleccionar...</option>';
 
-                const p3 = materiasPrimas.proteinas.aminoven_15;
-                const opt3 = document.createElement('option');
-                opt3.value = "aminoven_15";
-                opt3.text = `${p3.nombre} (CN: ${p3.codigo_nacional})`;
-                selProt.add(opt3);
-            }
+                // Obtener items de esa categoría
+                const items = materiasPrimas[category] || {};
 
-            // Populate Carbohydrates (Dextrose)
-            if (selHc && selHc.options.length === 1) {
-                const h5 = materiasPrimas.hidratos.glucosa_braun_5;
-                const optH5 = document.createElement('option');
-                optH5.value = "glucosa_braun_5";
-                optH5.text = `${h5.nombre} (CN: ${h5.codigo_nacional})`;
-                selHc.add(optH5);
+                // Recorrer y añadir
+                for (const [key, item] of Object.entries(items)) {
+                    // Si hay filtro y no lo pasa, saltar (ej: filtro para mostrar solo Fosfatos)
+                    if (filterFn && !filterFn(item)) continue;
 
-                const h1 = materiasPrimas.hidratos.glucosa_braun_20;
-                const optH1 = document.createElement('option');
-                optH1.value = "glucosa_braun_20";
-                optH1.text = `${h1.nombre} (CN: ${h1.codigo_nacional})`;
-                selHc.add(optH1);
-
-                const h3 = materiasPrimas.hidratos.glucosa_fresenius_20;
-                const optH3 = document.createElement('option');
-                optH3.value = "glucosa_fresenius_20";
-                optH3.text = `${h3.nombre} (CN: ${h3.codigo_nacional})`;
-                selHc.add(optH3);
-
-                const h2 = materiasPrimas.hidratos.glucosa_braun_30;
-                const optH2 = document.createElement('option');
-                optH2.value = "glucosa_braun_30";
-                optH2.text = `${h2.nombre} (CN: ${h2.codigo_nacional})`;
-                selHc.add(optH2);
-
-                const h4 = materiasPrimas.hidratos.glucosa_braun_70;
-                const optH4 = document.createElement('option');
-                optH4.value = "glucosa_braun_70";
-                optH4.text = `${h4.nombre} (CN: ${h4.codigo_nacional})`;
-                selHc.add(optH4);
-            }
-
-            // Populate Lipids
-            if (selLip && selLip.options.length === 1) {
-                const l1 = materiasPrimas.lipidos.smoflipid_20;
-                const optL1 = document.createElement('option');
-                optL1.value = "smoflipid_20";
-                optL1.text = `${l1.nombre} (CN: ${l1.codigo_nacional})`;
-                selLip.add(optL1);
-            }
-
-            // Populate Vitamins
-            selVits.forEach(sel => {
-                if (sel && sel.options.length === 1) {
-                    const v1 = materiasPrimas.vitaminas.vitalipid_adultos;
-                    const optV1 = document.createElement('option');
-                    optV1.value = "vitalipid_adultos";
-                    optV1.text = `${v1.nombre} (CN: ${v1.codigo_nacional})`;
-                    sel.add(optV1);
-
-                    const v2 = materiasPrimas.vitaminas.soluvit_liofilizado;
-                    const optV2 = document.createElement('option');
-                    optV2.value = "soluvit_liofilizado";
-                    optV2.text = `${v2.nombre} (CN: ${v2.codigo_nacional})`;
-                    sel.add(optV2);
-
-                    const v3 = materiasPrimas.vitaminas.oligostandard;
-                    const optV3 = document.createElement('option');
-                    optV3.value = "oligostandard";
-                    optV3.text = `${v3.nombre} (CN: ${v3.codigo_nacional})`;
-                    sel.add(optV3);
-
-                    // Add Benerva for general selection if needed, but row 4 handles high dose automatically
+                    const opt = document.createElement('option');
+                    opt.value = key;
+                    opt.text = item.nombre; // + (item.codigo_nacional ? ` (CN: ${item.codigo_nacional})` : '');
+                    el.add(opt);
                 }
-            });
+
+                // Intentar restaurar selección o seleccionar el primero si hay solo uno (opcional)
+                if (previousValue && items[previousValue]) {
+                    el.value = previousValue;
+                }
+                
+                // Habilitar el selector si estaba deshabilitado y ahora tiene opciones
+                if (el.options.length > 1) {
+                    el.disabled = false;
+                }
+            };
+
+            // 1. MACRONUTRIENTES
+            populateSelect('sel-prot', 'proteinas');
+            populateSelect('sel-hc', 'hidratos');
+            populateSelect('sel-lip', 'lipidos');
+
+            // 2. ELECTROLITOS (Usamos filtros para saber qué va en cada lista)
             
-            // Pre-populate the hidden/disabled row 4 selector with Benerva
-            if (selVit4 && selVit4.options.length === 0) {
-                 const v4 = materiasPrimas.vitaminas.benerva_100;
-                 const optV4 = document.createElement('option');
-                 optV4.value = "benerva_100";
-                 optV4.text = v4.nombre;
-                 selVit4.add(optV4);
-            }
+            // Fosfatos: Cualquier electrolito que tenga 'concentracion_fosfato'
+            populateSelect('sel-fosfato', 'electrolitos', item => item.concentracion_fosfato > 0);
 
-            // Populate Fixed Electrolyte Selectors (Simplified)
-            if (selFosfato && selFosfato.children.length === 0) {
-                 const e = materiasPrimas.electrolitos.glicerofosfato_sodico;
-                 const opt = document.createElement('option');
-                 opt.value = "glicerofosfato_sodico";
-                 opt.text = e.nombre;
-                 selFosfato.add(opt);
-            }
-            if (selSodio && selSodio.children.length === 0) {
-                 const e = materiasPrimas.electrolitos.cloruro_sodico_20;
-                 const opt = document.createElement('option');
-                 opt.value = "cloruro_sodico_20";
-                 opt.text = e.nombre;
-                 selSodio.add(opt);
-            }
-            if (selCalcio && selCalcio.children.length === 0) {
-                 const e = materiasPrimas.electrolitos.gluconato_calcico_5;
-                 const opt = document.createElement('option');
-                 opt.value = "gluconato_calcico_5";
-                 opt.text = e.nombre;
-                 selCalcio.add(opt);
-            }
-            if (selApi && selApi.children.length === 0) {
-                 const e = materiasPrimas.electrolitos.agua_inyectables_fresenius;
-                 const opt = document.createElement('option');
-                 opt.value = "agua_inyectables_fresenius";
-                 opt.text = e.nombre;
-                 selApi.add(opt);
-            }
+            // Magnesio: Cualquier electrolito que tenga 'concentracion_magnesio'
+            populateSelect('sel-magnesio', 'electrolitos', item => item.concentracion_magnesio > 0);
 
-            // Populate Magnesium (NEW)
-            const selMagnesio = document.getElementById('sel-magnesio');
-            if (selMagnesio && selMagnesio.options.length === 0) {
-                 const e = materiasPrimas.electrolitos.sulfato_magnesico_braun;
-                 const opt = document.createElement('option');
-                 opt.value = "sulfato_magnesico_braun";
-                 opt.text = e.nombre;
-                 selMagnesio.add(opt);
-            }
+            // Calcio: Cualquier electrolito que tenga 'concentracion_calcio_mEq' o 'mmol'
+            populateSelect('sel-calcio', 'electrolitos', item => (item.concentracion_calcio_mEq > 0 || item.concentracion_calcio_mmol > 0));
 
-            // Populate Bags
-            if (selBolsa && selBolsa.options.length === 1) {
-                const b1 = materiasPrimas.bolsas.bolsa_1l;
-                const optB1 = document.createElement('option');
-                optB1.value = "bolsa_1l";
-                optB1.text = b1.nombre;
-                selBolsa.add(optB1);
+            // Sodio (Restante): Electrolitos con Sodio PERO que NO sean Fosfatos (para no duplicar el Glycophos aquí)
+            // Se usa típicamente para NaCl o Acetato Sódico
+            populateSelect('sel-sodio', 'electrolitos', item => item.concentracion_sodio > 0 && (!item.concentracion_fosfato));
 
-                const b2 = materiasPrimas.bolsas.bolsa_3l;
-                const optB2 = document.createElement('option');
-                optB2.value = "bolsa_3l";
-                optB2.text = b2.nombre;
-                selBolsa.add(optB2);
-            }
+            // Agua (API)
+            populateSelect('sel-api', 'electrolitos', item => item.nombre.includes("AGUA") || item.nombre.includes("API"));
 
-            // Populate Consumables
-            if (selFungible && selFungible.options.length === 1) {
-                const f1 = materiasPrimas.fungibles.jeringa_10;
-                const optF1 = document.createElement('option');
-                optF1.value = "jeringa_10";
-                optF1.text = f1.nombre;
-                selFungible.add(optF1);
 
-                const f2 = materiasPrimas.fungibles.jeringa_20;
-                const optF2 = document.createElement('option');
-                optF2.value = "jeringa_20";
-                optF2.text = f2.nombre;
-                selFungible.add(optF2);
-
-                const f3 = materiasPrimas.fungibles.jeringa_30;
-                const optF3 = document.createElement('option');
-                optF3.value = "jeringa_30";
-                optF3.text = f3.nombre;
-                selFungible.add(optF3);
-
-                const f4 = materiasPrimas.fungibles.jeringa_50;
-                const optF4 = document.createElement('option');
-                optF4.value = "jeringa_50";
-                optF4.text = f4.nombre;
-                selFungible.add(optF4);
-            }
+            // 3. OTROS
+            populateSelect('sel-bolsa', 'bolsas');
+            populateSelect('sel-fungible', 'fungibles');
+            
+            // Vitaminas (Selectores múltiples)
+            ['sel-vit-1', 'sel-vit-2', 'sel-vit-3'].forEach(id => populateSelect(id, 'vitaminas'));
+            
+            // Tiamina especial (Filtramos para buscar Benerva o similar)
+            populateSelect('sel-vit-4', 'vitaminas', item => item.nombre.toUpperCase().includes("TIAMINA") || item.nombre.toUpperCase().includes("BENERVA"));
         }
 
         // Helper to auto-fill volume for fixed-dose items like vitamins
@@ -1678,13 +1537,14 @@
 
             // --- 2. SOLVER DE ELECTROLITOS ---
             
-            // A. FOSFATO (Prioridad 1: Solo hay una fuente habitual, Glicerofosfato Sódico)
-            // Glycophos: 1 ml = 1 mmol P + 2 mEq Na
+            // A. FOSFATO
             let volGlyco = 0;
             let naFromGlyco = 0;
-            if (targetP > 0) {
-                const prodGlyco = materiasPrimas.electrolitos.glicerofosfato_sodico;
-                volGlyco = targetP / (prodGlyco.concentracion_fosfato / 1000); // Conc en mEq o mmol? Glycophos es 1mmol/ml
+            const selFos = document.getElementById('sel-fosfato'); // Leemos el selector
+            
+            if (targetP > 0 && selFos.value && materiasPrimas.electrolitos[selFos.value]) {
+                const prodGlyco = materiasPrimas.electrolitos[selFos.value]; // <--- USAMOS LA SELECCIÓN
+                volGlyco = targetP / (prodGlyco.concentracion_fosfato / 1000);
                 
                 const elVolFos = document.getElementById('vol-fosfato');
                 if(elVolFos) elVolFos.value = volGlyco.toFixed(1);
@@ -1693,19 +1553,19 @@
                 totalOsm += volGlyco * (prodGlyco.osmolaridad/1000);
                 fungibles.push(...getBestSyringe(volGlyco));
                 
-                // Calcular Na aportado
                 naFromGlyco = volGlyco * (prodGlyco.concentracion_sodio / 1000);
             } else {
-                const elVolFos = document.getElementById('vol-fosfato');
-                if(elVolFos) elVolFos.value = 0;
+                 // ... resto del else ...
+                 if(document.getElementById('vol-fosfato')) document.getElementById('vol-fosfato').value = 0;
             }
 
-            // B. MAGNESIO Y SULFATO (Prioridad 2: Sulfato Magnésico)
-            // MgSO4: 1 ml = 1 mEq Mg + 1 mEq Sulfato (aprox)
+            // B. MAGNESIO Y SULFATO
             let volMg = 0;
             let sulfatoResultante = 0;
-            if (targetMg > 0) {
-                const prodMg = materiasPrimas.electrolitos.sulfato_magnesico_braun;
+            const selMg = document.getElementById('sel-magnesio'); // Leemos el selector
+
+            if (targetMg > 0 && selMg.value && materiasPrimas.electrolitos[selMg.value]) {
+                const prodMg = materiasPrimas.electrolitos[selMg.value]; // <--- USAMOS LA SELECCIÓN
                 volMg = targetMg / (prodMg.concentracion_magnesio / 1000);
                 
                 const elVolMg = document.getElementById('vol-magnesio');
@@ -1715,27 +1575,33 @@
                 totalOsm += volMg * (prodMg.osmolaridad/1000);
                 fungibles.push(...getBestSyringe(volMg));
                 
-                // Calcular Sulfato Resultante
-                sulfatoResultante = volMg * (prodMg.concentracion_sulfato / 1000);
+                if(prodMg.concentracion_sulfato) {
+                    sulfatoResultante = volMg * (prodMg.concentracion_sulfato / 1000);
+                }
             } else {
-                const elVolMg = document.getElementById('vol-magnesio');
-                if(elVolMg) elVolMg.value = 0;
+                // ... resto del else ...
+                if(document.getElementById('vol-magnesio')) document.getElementById('vol-magnesio').value = 0;
             }
             // Actualizar input readonly de Sulfato
             const elSulf = document.getElementById('input-sulfato');
             if(elSulf) elSulf.value = sulfatoResultante.toFixed(1);
 
 
-            // C. SODIO Y CLORO (Parte 1: Llenar Sodio con NaCl)
-            // Na Necesario = Target - (Na Lípidos + Na Glyco)
+            // C. SODIO Y CLORO (Parte 1: Llenar Sodio con la fuente seleccionada)
             let naNeeded = targetNa - naFromLip - naFromGlyco;
             let volNaCl = 0;
             let clFromNaCl = 0;
-            
-            if (naNeeded > 0) {
-                const prodNa = materiasPrimas.electrolitos.cloruro_sodico_20;
+            const selNa = document.getElementById('sel-sodio'); // Leemos el selector
+
+            if (naNeeded > 0 && selNa.value && materiasPrimas.electrolitos[selNa.value]) {
+                const prodNa = materiasPrimas.electrolitos[selNa.value]; // <--- USAMOS LA SELECCIÓN (Tu nuevo Cloruro Sódico)
+                
                 volNaCl = naNeeded / (prodNa.concentracion_sodio / 1000);
-                clFromNaCl = volNaCl * (prodNa.concentracion_cloro / 1000);
+                
+                // Si la fuente tiene cloro (ej. NaCl), calculamos cuánto aporta
+                if (prodNa.concentracion_cloro) {
+                    clFromNaCl = volNaCl * (prodNa.concentracion_cloro / 1000);
+                }
                 
                 document.getElementById('vol-sodio').value = volNaCl.toFixed(1);
                 totalVol += volNaCl;
@@ -1842,9 +1708,14 @@
 
 
             // E. CALCIO
-            if (targetCa > 0) {
-                const prodCa = materiasPrimas.electrolitos.gluconato_calcico_5;
-                const volCa = (targetCa / (prodCa.concentracion_calcio_mEq / 1000));
+            const selCa = document.getElementById('sel-calcio'); // Leemos el selector
+
+            if (targetCa > 0 && selCa.value && materiasPrimas.electrolitos[selCa.value]) {
+                const prodCa = materiasPrimas.electrolitos[selCa.value]; // <--- USAMOS LA SELECCIÓN
+                // Usamos mEq o mmol según disponibilidad (preferencia mEq para el cálculo directo)
+                const concCa = prodCa.concentracion_calcio_mEq || (prodCa.concentracion_calcio_mmol * 2); 
+                
+                const volCa = (targetCa / (concCa / 1000));
                 document.getElementById('vol-calcio').value = volCa.toFixed(1);
                 totalVol += volCa;
                 totalOsm += volCa * (prodCa.osmolaridad/1000);
