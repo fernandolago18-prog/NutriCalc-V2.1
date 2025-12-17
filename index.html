@@ -1708,12 +1708,21 @@
                  if(statusEl) { statusEl.innerText = "OK Central"; statusEl.className = "text-[10px] font-bold text-blue-600 bg-blue-100 px-2 py-1 rounded border border-blue-200"; }
             }
 
-            // Mostrar Warnings
+            // Mostrar Warnings (CORREGIDO: Ahora con color y estilo)
             const warnBox = document.getElementById('compounding-warnings');
             if (warnBox) {
                 if (warnings.length > 0) {
                     warnBox.innerHTML = warnings.join('<br>');
                     warnBox.classList.remove('hidden');
+                    
+                    // ESTA ES LA LÍNEA QUE FALTABA (Elige una de las dos opciones):
+                    
+                    // OPCIÓN A: Estilo "Moderno" (Rojo suave, elegante)
+                    // warnBox.className = 'mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 shadow-sm';
+                    
+                    // OPCIÓN B: Estilo "Clásico/Urgente" (Rojo fuerte, barra lateral, como antes) -> RECOMENDADO SI QUIERES QUE SE VEA MUCHO
+                    warnBox.className = 'mb-6 p-4 bg-red-100 border-l-4 border-red-500 text-red-700 font-bold shadow-md';
+                    
                 } else {
                     warnBox.classList.add('hidden');
                 }
