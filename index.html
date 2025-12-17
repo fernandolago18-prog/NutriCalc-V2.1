@@ -923,40 +923,80 @@
             </div>
         </div>
 
-        <div id="view-config" class="hidden slide-in max-w-4xl mx-auto">
-            <div class="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
-                <div class="bg-slate-700 text-white px-6 py-4 flex justify-between items-center">
-                    <h2 class="text-lg font-bold"><i class="fa-solid fa-database mr-2"></i>Gestión de Base de Datos</h2>
-                    <span class="text-xs bg-orange-500 text-white px-2 py-1 rounded border border-orange-400">Modo Avanzado</span>
-                </div>
+        <div id="view-config" class="hidden slide-in max-w-6xl mx-auto">
+            <div class="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden min-h-[600px] flex flex-col md:flex-row">
                 
-                <div class="p-6 space-y-6">
-                    <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4">
-                        <div class="flex">
-                            <div class="flex-shrink-0"><i class="fa-solid fa-triangle-exclamation text-yellow-600"></i></div>
-                            <div class="ml-3">
-                                <p class="text-sm text-yellow-700">
-                                    <strong>Atención:</strong> Aquí puedes editar los medicamentos disponibles. 
-                                    Asegúrate de mantener el formato JSON correcto (comillas, comas, etc.). 
-                                </p>
+                <div class="w-full md:w-64 bg-slate-50 border-r border-slate-200 p-4 flex-shrink-0">
+                    <h3 class="font-bold text-slate-700 mb-4 px-2">Categorías</h3>
+                    <div class="space-y-1">
+                        <button onclick="renderCategoryConfig('proteinas')" id="cat-btn-proteinas" class="w-full text-left px-4 py-2 rounded-lg text-sm font-medium hover:bg-white hover:shadow-sm transition cat-btn text-blue-600 bg-blue-50">Proteínas</button>
+                        <button onclick="renderCategoryConfig('hidratos')" id="cat-btn-hidratos" class="w-full text-left px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-white hover:shadow-sm transition cat-btn">Hidratos de Carbono</button>
+                        <button onclick="renderCategoryConfig('lipidos')" id="cat-btn-lipidos" class="w-full text-left px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-white hover:shadow-sm transition cat-btn">Lípidos</button>
+                        <button onclick="renderCategoryConfig('electrolitos')" id="cat-btn-electrolitos" class="w-full text-left px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-white hover:shadow-sm transition cat-btn">Electrolitos</button>
+                        <button onclick="renderCategoryConfig('vitaminas')" id="cat-btn-vitaminas" class="w-full text-left px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-white hover:shadow-sm transition cat-btn">Aditivos/Vitaminas</button>
+                        <button onclick="renderCategoryConfig('bolsas')" id="cat-btn-bolsas" class="w-full text-left px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-white hover:shadow-sm transition cat-btn">Bolsas</button>
+                        <button onclick="renderCategoryConfig('fungibles')" id="cat-btn-fungibles" class="w-full text-left px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-white hover:shadow-sm transition cat-btn">Fungibles</button>
+                    </div>
+                    
+                    <div class="mt-8 pt-4 border-t border-slate-200">
+                        <button onclick="resetDatabaseToFactory()" class="w-full flex items-center justify-center gap-2 text-red-600 hover:text-red-800 text-xs font-bold px-4 py-2 border border-red-200 rounded hover:bg-red-50 transition">
+                            <i class="fa-solid fa-rotate-left"></i> Restaurar Fábrica
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex-grow p-6 overflow-y-auto">
+                    
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 id="config-cat-title" class="text-xl font-bold text-slate-800">Gestionar Proteínas</h2>
+                        <button onclick="showAddForm()" class="bg-green-600 hover:bg-green-700 text-white text-sm font-bold py-2 px-4 rounded-lg shadow transition flex items-center gap-2">
+                            <i class="fa-solid fa-plus"></i> Nuevo Producto
+                        </button>
+                    </div>
+
+                    <div id="config-table-container" class="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden mb-8">
+                        <table class="w-full text-sm text-left text-slate-600">
+                            <thead class="text-xs text-slate-700 uppercase bg-slate-50 border-b border-slate-200">
+                                <tr>
+                                    <th class="px-6 py-3">Nombre Comercial</th>
+                                    <th class="px-6 py-3">Detalles Clave</th>
+                                    <th class="px-6 py-3 text-right">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="config-table-body" class="divide-y divide-slate-100">
+                                </tbody>
+                        </table>
+                    </div>
+
+                    <div id="add-item-form-container" class="hidden bg-slate-50 rounded-xl border border-slate-200 p-6 animate-fade-in">
+                        <h3 class="font-bold text-slate-800 mb-4 pb-2 border-b border-slate-200">Añadir Nuevo Producto</h3>
+                        <form id="add-item-form" onsubmit="event.preventDefault(); saveNewItem();">
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-600 mb-1">Nombre Comercial *</label>
+                                    <input type="text" id="new-nombre" required class="w-full border-slate-300 rounded p-2 text-sm" placeholder="Ej: Glucosa 50%">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-600 mb-1">Código Nacional</label>
+                                    <input type="number" id="new-cn" class="w-full border-slate-300 rounded p-2 text-sm" placeholder="Ej: 654321">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-600 mb-1">Osmolaridad (mOsm/L)</label>
+                                    <input type="number" id="new-osm" class="w-full border-slate-300 rounded p-2 text-sm" placeholder="0">
+                                </div>
                             </div>
-                        </div>
+
+                            <div id="dynamic-fields-container" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 bg-white p-4 rounded border border-slate-200">
+                                </div>
+
+                            <div class="flex justify-end gap-3">
+                                <button type="button" onclick="hideAddForm()" class="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded text-sm font-medium">Cancelar</button>
+                                <button type="submit" class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm font-bold shadow">Guardar Producto</button>
+                            </div>
+                        </form>
                     </div>
 
-                    <div>
-                        <label class="block text-sm font-bold text-slate-700 mb-2">Editor de Datos (JSON)</label>
-                        <textarea id="db-editor" rows="20" class="w-full font-mono text-xs p-4 bg-slate-800 text-green-400 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 shadow-inner" spellcheck="false"></textarea>
-                    </div>
-
-                    <div class="flex justify-between items-center pt-4 border-t border-slate-100">
-                        <button onclick="resetDatabaseToFactory()" class="text-red-600 hover:text-red-800 text-sm font-bold px-4 py-2 border border-red-200 rounded hover:bg-red-50 transition">
-                            <i class="fa-solid fa-rotate-left mr-2"></i>Restaurar Fábrica
-                        </button>
-                        
-                        <button onclick="saveUserDatabase()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-xl shadow-md transition transform hover:scale-105">
-                            <i class="fa-solid fa-save mr-2"></i>GUARDAR CAMBIOS
-                        </button>
-                    </div>
                 </div>
             </div>
         </div>
@@ -1991,7 +2031,7 @@
                 updateElaborationView();
                 setTimeout(calculateCompounding, 100); 
                 
-                // Lógica Hepática
+                // Lógica Hepática (Hepatico check)
                 const uciTipo = document.getElementById('uci-tipo').value;
                 if (mode === 'uci' && uciTipo === 'hepatico') {
                     const selProt = document.getElementById('sel-prot');
@@ -2001,8 +2041,9 @@
                     }
                 }
             } else if (tab === 'config') {
-                // Cargar JSON en el editor
-                document.getElementById('db-editor').value = JSON.stringify(materiasPrimas, null, 4);
+                // AQUI ES DONDE HAS HECHO EL CAMBIO:
+                // Inicializar el gestor visual en la primera categoría
+                renderCategoryConfig('proteinas');
             }
         }
 
@@ -2713,27 +2754,196 @@ function prepareAndPrint() {
             window.print();
         }
 
-        // --- FUNCIONES DE GESTIÓN DE BASE DE DATOS ---
+        // --- GESTOR VISUAL DE BASE DE DATOS (NUEVO) ---
 
-        function saveUserDatabase() {
-            const jsonText = document.getElementById('db-editor').value;
-            try {
-                const parsedData = JSON.parse(jsonText);
-                
-                // Validación básica
-                if (!parsedData.proteinas || !parsedData.hidratos) {
-                    throw new Error("Estructura inválida: Faltan categorías principales.");
-                }
+        let currentConfigCategory = 'proteinas';
 
-                // Guardar
-                materiasPrimas = parsedData;
-                localStorage.setItem('nutricalc_db_v1', JSON.stringify(materiasPrimas));
-                
-                if(confirm("Datos guardados correctamente. La página se recargará para aplicar los cambios.")) {
-                    location.reload();
+        // Definición de qué campos pedir para cada categoría
+        const CONFIG_FIELDS = {
+            proteinas: [
+                { id: 'concentracion_aa', label: 'Conc. Aminoácidos (g/L)', type: 'number', req: true },
+                { id: 'nitrogeno', label: 'Nitrógeno (g/L)', type: 'number', req: true },
+                { id: 'sodio', label: 'Sodio (mmol/L)', type: 'number' }
+            ],
+            hidratos: [
+                { id: 'concentracion_hc', label: 'Conc. Glucosa (g/L)', type: 'number', req: true },
+                { id: 'kcal_l', label: 'Kcal/L', type: 'number' }
+            ],
+            lipidos: [
+                { id: 'concentracion_lip', label: 'Conc. Lípidos (g/L)', type: 'number', req: true },
+                { id: 'kcal_l', label: 'Kcal/L', type: 'number' },
+                { id: 'sodio', label: 'Sodio (mmol/L)', type: 'number' }
+            ],
+            electrolitos: [
+                { id: 'concentracion_sodio', label: 'Sodio (mEq/L)', type: 'number' },
+                { id: 'concentracion_potasio', label: 'Potasio (mEq/L)', type: 'number' },
+                { id: 'concentracion_cloro', label: 'Cloro (mEq/L)', type: 'number' },
+                { id: 'concentracion_calcio_mEq', label: 'Calcio (mEq/L)', type: 'number' },
+                { id: 'concentracion_magnesio', label: 'Magnesio (mEq/L)', type: 'number' },
+                { id: 'concentracion_fosfato', label: 'Fosfato (mmol/L)', type: 'number' },
+                { id: 'concentracion_acetato', label: 'Acetato (mEq/L)', type: 'number' },
+                { id: 'concentracion_sulfato', label: 'Sulfato (mEq/L)', type: 'number' }
+            ],
+            vitaminas: [
+                { id: 'volumen_envase', label: 'Volumen Envase (ml)', type: 'number' }
+            ],
+            bolsas: [
+                { id: 'capacidad_ml', label: 'Capacidad (ml)', type: 'number', req: true }
+            ],
+            fungibles: [] // Solo nombre
+        };
+
+        // 1. Renderizar la vista de categoría
+        function renderCategoryConfig(cat) {
+            currentConfigCategory = cat;
+            
+            // Actualizar botones laterales
+            document.querySelectorAll('.cat-btn').forEach(btn => {
+                btn.classList.remove('bg-blue-50', 'text-blue-600');
+                btn.classList.add('text-slate-600');
+            });
+            document.getElementById(`cat-btn-${cat}`).classList.add('bg-blue-50', 'text-blue-600');
+            document.getElementById(`cat-btn-${cat}`).classList.remove('text-slate-600');
+
+            // Título
+            document.getElementById('config-cat-title').innerText = 'Gestionar ' + cat.charAt(0).toUpperCase() + cat.slice(1);
+
+            // Ocultar formulario si estaba abierto
+            hideAddForm();
+
+            // Renderizar Tabla
+            const tbody = document.getElementById('config-table-body');
+            tbody.innerHTML = '';
+            
+            const items = materiasPrimas[cat] || {};
+            
+            if (Object.keys(items).length === 0) {
+                tbody.innerHTML = `<tr><td colspan="3" class="px-6 py-4 text-center text-slate-400">No hay productos en esta categoría.</td></tr>`;
+                return;
+            }
+
+            for (const [key, item] of Object.entries(items)) {
+                // Crear resumen de detalles
+                let details = [];
+                if(item.codigo_nacional) details.push(`CN: ${item.codigo_nacional}`);
+                if(item.osmolaridad) details.push(`Osm: ${item.osmolaridad}`);
+                // Añadir detalles específicos
+                const fields = CONFIG_FIELDS[cat] || [];
+                fields.forEach(f => {
+                    if(item[f.id]) details.push(`${f.label.split('(')[0]}: ${item[f.id]}`);
+                });
+
+                tbody.innerHTML += `
+                    <tr class="bg-white hover:bg-slate-50 transition">
+                        <td class="px-6 py-4 font-medium text-slate-900">${item.nombre}</td>
+                        <td class="px-6 py-4 text-xs text-slate-500">${details.join(' | ')}</td>
+                        <td class="px-6 py-4 text-right">
+                            <button onclick="deleteItem('${cat}', '${key}')" class="text-red-600 hover:text-red-900 text-xs font-bold border border-red-100 hover:bg-red-50 px-2 py-1 rounded">
+                                <i class="fa-solid fa-trash"></i> Eliminar
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+
+        // 2. Mostrar Formulario de Añadir
+        function showAddForm() {
+            const container = document.getElementById('add-item-form-container');
+            const dynamicContainer = document.getElementById('dynamic-fields-container');
+            const form = document.getElementById('add-item-form');
+            
+            form.reset(); // Limpiar inputs
+            dynamicContainer.innerHTML = ''; // Limpiar dinámicos
+
+            // Generar campos dinámicos según categoría
+            const fields = CONFIG_FIELDS[currentConfigCategory] || [];
+            
+            if (fields.length === 0 && currentConfigCategory !== 'fungibles') {
+                dynamicContainer.innerHTML = '<p class="text-xs text-slate-400 italic">Solo se requiere Nombre y CN.</p>';
+            }
+
+            fields.forEach(f => {
+                dynamicContainer.innerHTML += `
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">${f.label}</label>
+                        <input type="${f.type}" id="dyn-${f.id}" ${f.req ? 'required' : ''} class="w-full border-slate-300 rounded p-2 text-sm bg-slate-50 focus:bg-white" placeholder="0">
+                    </div>
+                `;
+            });
+
+            container.classList.remove('hidden');
+            document.getElementById('config-table-container').classList.add('opacity-50', 'pointer-events-none');
+            // Scroll al formulario
+            container.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function hideAddForm() {
+            document.getElementById('add-item-form-container').classList.add('hidden');
+            document.getElementById('config-table-container').classList.remove('opacity-50', 'pointer-events-none');
+        }
+
+        // 3. GUARDAR NUEVO ITEM (Soluciona el bug de sobrescritura)
+        function saveNewItem() {
+            const name = document.getElementById('new-nombre').value;
+            if (!name) return alert("El nombre es obligatorio");
+
+            // Generar ID único (slug)
+            const id = name.toLowerCase().replace(/[^a-z0-9]/g, '_') + '_' + Math.floor(Math.random() * 1000);
+
+            // Objeto base
+            const newItem = {
+                nombre: name,
+                codigo_nacional: parseInt(document.getElementById('new-cn').value) || 0,
+                osmolaridad: parseFloat(document.getElementById('new-osm').value) || 0
+            };
+
+            // Recoger campos dinámicos
+            const fields = CONFIG_FIELDS[currentConfigCategory] || [];
+            fields.forEach(f => {
+                const val = document.getElementById(`dyn-${f.id}`).value;
+                if (val !== "") {
+                    newItem[f.id] = parseFloat(val);
                 }
-            } catch (e) {
-                alert("❌ ERROR JSON: " + e.message);
+            });
+
+            // AÑADIR A LA LISTA EXISTENTE (Sin borrar lo anterior)
+            if (!materiasPrimas[currentConfigCategory]) materiasPrimas[currentConfigCategory] = {};
+            
+            // Asignamos la nueva clave al objeto de esa categoría
+            materiasPrimas[currentConfigCategory][id] = newItem;
+
+            // Guardar en LocalStorage
+            saveToLocalStorage();
+
+            // Refrescar UI
+            hideAddForm();
+            renderCategoryConfig(currentConfigCategory);
+            
+            // Notificar éxito (opcional)
+            // alert("Producto añadido correctamente. Recuerde recargar la página si quiere usarlo ahora.");
+        }
+
+        // 4. ELIMINAR ITEM
+        function deleteItem(cat, key) {
+            if(confirm("¿Estás seguro de eliminar este producto?")) {
+                delete materiasPrimas[cat][key];
+                saveToLocalStorage();
+                renderCategoryConfig(cat);
+            }
+        }
+
+        // Helper para guardar
+        function saveToLocalStorage() {
+            localStorage.setItem('nutricalc_db_v1', JSON.stringify(materiasPrimas));
+            // Actualizar selectores (para que aparezca sin recargar F5, aunque F5 es más seguro)
+            initRawMaterials(); 
+        }
+
+        function resetDatabaseToFactory() {
+            if (confirm("¿Restaurar la base de datos original? Se perderán tus productos personalizados.")) {
+                localStorage.removeItem('nutricalc_db_v1');
+                location.reload();
             }
         }
 
