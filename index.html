@@ -1369,75 +1369,67 @@
 
         // FUNCIÓN MEJORADA: Llena los selectores dinámicamente desde la Base de Datos
         function initRawMaterials() {
-            // Helper para limpiar y llenar un selector
+            // Helper para llenar selector
             const populateSelect = (selectId, category, filterFn = null) => {
                 const el = document.getElementById(selectId);
                 if (!el) return;
-
-                // Guardar la selección actual si es posible
-                const previousValue = el.value;
-
-                // Limpiar (Dejar solo la opción por defecto)
                 el.innerHTML = '<option value="">Seleccionar...</option>';
-
-                // Obtener items de esa categoría
                 const items = materiasPrimas[category] || {};
-
-                // Recorrer y añadir
+                
                 for (const [key, item] of Object.entries(items)) {
-                    // Si hay filtro y no lo pasa, saltar (ej: filtro para mostrar solo Fosfatos)
                     if (filterFn && !filterFn(item)) continue;
-
                     const opt = document.createElement('option');
                     opt.value = key;
-                    opt.text = item.nombre; // + (item.codigo_nacional ? ` (CN: ${item.codigo_nacional})` : '');
+                    
+                    let text = item.nombre;
+                    if (item.codigo_nacional) text += ` (CN: ${item.codigo_nacional})`;
+                    if (item.es_hepatico) text += ' [HEPÁTICO]';
+                    opt.text = text;
+                    if (item.es_hepatico) { opt.style.color = "#d97706"; opt.style.fontWeight = "bold"; }
                     el.add(opt);
                 }
-
-                // Intentar restaurar selección o seleccionar el primero si hay solo uno (opcional)
-                if (previousValue && items[previousValue]) {
-                    el.value = previousValue;
-                }
-                
-                // Habilitar el selector si estaba deshabilitado y ahora tiene opciones
-                if (el.options.length > 1) {
-                    el.disabled = false;
-                }
+                if (el.options.length > 1) el.disabled = false;
             };
 
-            // 1. MACRONUTRIENTES
+            // 1. LLENAR LISTAS
             populateSelect('sel-prot', 'proteinas');
             populateSelect('sel-hc', 'hidratos');
             populateSelect('sel-lip', 'lipidos');
-
-            // 2. ELECTROLITOS (Usamos filtros para saber qué va en cada lista)
-            
-            // Fosfatos: Cualquier electrolito que tenga 'concentracion_fosfato'
             populateSelect('sel-fosfato', 'electrolitos', item => item.concentracion_fosfato > 0);
-
-            // Magnesio: Cualquier electrolito que tenga 'concentracion_magnesio'
             populateSelect('sel-magnesio', 'electrolitos', item => item.concentracion_magnesio > 0);
-
-            // Calcio: Cualquier electrolito que tenga 'concentracion_calcio_mEq' o 'mmol'
             populateSelect('sel-calcio', 'electrolitos', item => (item.concentracion_calcio_mEq > 0 || item.concentracion_calcio_mmol > 0));
-
-            // Sodio (Restante): Electrolitos con Sodio PERO que NO sean Fosfatos (para no duplicar el Glycophos aquí)
-            // Se usa típicamente para NaCl o Acetato Sódico
-            populateSelect('sel-sodio', 'electrolitos', item => item.concentracion_sodio > 0 && (!item.concentracion_fosfato));
-
-            // Agua (API)
-            populateSelect('sel-api', 'electrolitos', item => item.nombre.includes("AGUA") || item.nombre.includes("API"));
-
-
-            // 3. OTROS
+            // Sodio: Todo lo que tenga Na pero NO sea Fosfato (para no duplicar Glycophos)
+            populateSelect('sel-sodio', 'electrolitos', item => item.concentracion_sodio > 0 && !item.concentracion_fosfato);
+            populateSelect('sel-api', 'electrolitos', item => item.nombre.toUpperCase().includes("AGUA") || item.nombre.toUpperCase().includes("API"));
+            
             populateSelect('sel-bolsa', 'bolsas');
             populateSelect('sel-fungible', 'fungibles');
-            
-            // Vitaminas (Selectores múltiples)
             ['sel-vit-1', 'sel-vit-2', 'sel-vit-3'].forEach(id => populateSelect(id, 'vitaminas'));
-            
-            // Tiamina especial (Filtramos para buscar Benerva o similar)
             populateSelect('sel-vit-4', 'vitaminas', item => item.nombre.toUpperCase().includes("TIAMINA") || item.nombre.toUpperCase().includes("BENERVA"));
+
+            // 2. APLICAR PRE-SELECCIONES OBLIGATORIAS (Tu configuración por defecto)
+            const defaults = {
+                'sel-prot': 'aminoplasmal_15', // Si en tu DB se llama diferente, ajusta este ID
+                'sel-hc': 'glucosa_braun_70',
+                'sel-lip': 'smoflipid_20',
+                'sel-fosfato': 'glicerofosfato_sodico', // Glicophos
+                'sel-sodio': 'cloruro_sodico_20',
+                'sel-magnesio': 'sulfato_magnesico_braun',
+                'sel-calcio': 'gluconato_calcico_5',
+                'sel-api': 'agua_inyectables_fresenius'
+            };
+
+            for (const [id, val] of Object.entries(defaults)) {
+                const el = document.getElementById(id);
+                // Solo seleccionamos si la opción existe en la lista (para evitar errores si cambias la DB)
+                if (el && el.querySelector(`option[value="${val}"]`)) {
+                    el.value = val;
+                }
+            }
+            
+            // Nota: El Potasio (KCl y Acetato) no tiene selector propio en tu HTML original 
+            // (eran inputs fijos "readonly"), pero la lógica interna usará los de la DB.
+            // Las vitaminas (sel-vit-1, 2, 3) se quedan en "Seleccionar..." (value="") como pediste.
         }
 
         // Helper to auto-fill volume for fixed-dose items like vitamins
@@ -1469,331 +1461,265 @@
 
         // --- FUNCIÓN DE BALANCE IÓNICO Y ELABORACIÓN (VERSIÓN ROBUSTA) ---
         function calculateCompounding(sourceTrigger) {
-            // 1. Obtener Targets (Metas) desde la UI
-            const elabProt = document.getElementById('elab-prot');
-            const targetProt = parseFloat(elabProt ? elabProt.innerText : 0) || 0;
-            const targetHC = parseFloat(document.getElementById('elab-hc').innerText) || 0;
-            const targetLip = parseFloat(document.getElementById('elab-lip').innerText) || 0;
-            const targetVolAdmin = parseFloat(document.getElementById('volumen-administrar').value) || 0;
+            // 1. LEER TARGETS (METAS)
+            // Si el texto es '0' o '--', usamos 0.
+            const getTxtVal = (id) => parseFloat(document.getElementById(id)?.innerText) || 0;
+            const getInpVal = (id) => parseFloat(document.getElementById(id)?.value) || 0;
 
-            // Leer Inputs de Electrolitos
-            const getVal = (id) => {
-                const el = document.getElementById(id);
-                return el ? (parseFloat(el.value) || 0) : 0;
-            };
-            
-            const targetNa = getVal('input-sodio');
-            const targetK = getVal('input-potasio');
-            const targetP = getVal('input-fosforo');
-            const targetMg = getVal('input-magnesio');
-            const targetCa = getVal('input-calcio');
+            const targetProt = getTxtVal('elab-prot'); // Viene de la calculadora
+            const targetHC = getTxtVal('elab-hc');
+            const targetLip = getTxtVal('elab-lip');
+            const targetVolAdmin = getInpVal('volumen-administrar');
+
+            const targetNa = getInpVal('input-sodio');
+            const targetK = getInpVal('input-potasio');
+            const targetP = getInpVal('input-fosforo');
+            const targetMg = getInpVal('input-magnesio');
+            const targetCa = getInpVal('input-calcio');
             
             // Targets secundarios (Solver)
-            let targetCl = getVal('input-cloro');
-            let targetAcetato = getVal('input-acetato');
+            let targetCl = getInpVal('input-cloro'); // El usuario puede pedir X cloro
+            let targetAcetato = getInpVal('input-acetato');
 
             let totalVol = 0;
             let totalOsm = 0;
             let fungibles = [];
             let warnings = [];
 
-            // --- HELPER: BUSCADOR INTELIGENTE DE PRODUCTOS ---
-            // Intenta usar el selector. Si falla, busca el ID por defecto. Si falla, coge el primero que encuentre.
-            const getProductSmart = (category, selectId, defaultIdPart) => {
-                // 1. Intentar desde el selector
+            // Helper para obtener datos del producto seleccionado
+            const getProd = (selectId, category) => {
                 const sel = document.getElementById(selectId);
                 if (sel && sel.value && materiasPrimas[category] && materiasPrimas[category][sel.value]) {
                     return materiasPrimas[category][sel.value];
                 }
-
-                // 2. Intentar buscar por defecto (Fallback) en la base de datos
-                if (materiasPrimas[category]) {
-                    // Buscar alguno que contenga el ID parcial (ej: "cloruro_sodico")
-                    for (const [key, item] of Object.entries(materiasPrimas[category])) {
-                        if (key.includes(defaultIdPart)) return item;
-                    }
-                    // 3. Si no, devolver el primero de la categoría (Emergencia)
-                    const keys = Object.keys(materiasPrimas[category]);
-                    if (keys.length > 0) return materiasPrimas[category][keys[0]];
-                }
                 return null;
             };
 
-            // --- 1. MACRONUTRIENTES ---
-            // Proteinas
-            const prodProt = getProductSmart('proteinas', 'sel-prot', 'amino');
-            if (prodProt) {
-                const vol = (targetProt / (prodProt.concentracion_aa / 1000));
+            // Helper cálculo volumen seguro
+            const calcVol = (target, concPerLiter) => {
+                if (target <= 0 || !concPerLiter) return 0;
+                return target / (concPerLiter / 1000);
+            };
+
+            // --- A. MACRONUTRIENTES ---
+            const pProt = getProd('sel-prot', 'proteinas');
+            if (pProt) {
+                const vol = calcVol(targetProt, pProt.concentracion_aa);
                 document.getElementById('vol-prot').value = vol.toFixed(1);
                 totalVol += vol;
-                totalOsm += vol * (prodProt.osmolaridad/1000); 
+                totalOsm += vol * (pProt.osmolaridad/1000);
                 fungibles.push(...getBestSyringe(vol));
             }
 
-            // Lipidos (Aportan algo de Sodio a veces)
-            let naFromLip = 0;
-            let pFromLip = 0; 
-            const prodLip = getProductSmart('lipidos', 'sel-lip', 'lipid');
-            if (prodLip) {
-                const vol = (targetLip / (prodLip.concentracion_lip / 1000));
-                document.getElementById('vol-lip').value = vol.toFixed(1);
-                totalVol += vol;
-                totalOsm += vol * (prodLip.osmolaridad/1000); 
-                fungibles.push(...getBestSyringe(vol));
-                if (prodLip.sodio) naFromLip = vol * (prodLip.sodio / 1000);
-            }
-
-            // Hidratos
-            const prodHc = getProductSmart('hidratos', 'sel-hc', 'glucosa');
-            if (prodHc) {
-                const vol = (targetHC / (prodHc.concentracion_hc / 1000));
+            const pHc = getProd('sel-hc', 'hidratos');
+            if (pHc) {
+                const vol = calcVol(targetHC, pHc.concentracion_hc);
                 document.getElementById('vol-hc').value = vol.toFixed(1);
                 totalVol += vol;
-                totalOsm += vol * (prodHc.osmolaridad/1000);
+                totalOsm += vol * (pHc.osmolaridad/1000);
                 fungibles.push(...getBestSyringe(vol));
             }
 
-            // --- 2. SOLVER DE ELECTROLITOS ---
-            
-            // A. FOSFATO (Prioridad 1)
-            let volGlyco = 0;
-            let naFromGlyco = 0;
-            
-            if (targetP > 0) {
-                // Busca glicerofosfato o el primer fosfato disponible
-                const prodGlyco = getProductSmart('electrolitos', 'sel-fosfato', 'glicero');
-                
-                if (prodGlyco) {
-                    volGlyco = targetP / (prodGlyco.concentracion_fosfato / 1000);
-                    
-                    const elVolFos = document.getElementById('vol-fosfato');
-                    if(elVolFos) elVolFos.value = volGlyco.toFixed(1);
-                    
-                    totalVol += volGlyco;
-                    totalOsm += volGlyco * (prodGlyco.osmolaridad/1000);
-                    fungibles.push(...getBestSyringe(volGlyco));
-                    
-                    naFromGlyco = volGlyco * (prodGlyco.concentracion_sodio / 1000);
-                }
-            } else {
-                const elVolFos = document.getElementById('vol-fosfato');
-                if(elVolFos) elVolFos.value = 0;
+            // LÍPIDOS (Calculamos Na si tienen)
+            let naFromLip = 0;
+            const pLip = getProd('sel-lip', 'lipidos');
+            if (pLip) {
+                const vol = calcVol(targetLip, pLip.concentracion_lip);
+                document.getElementById('vol-lip').value = vol.toFixed(1);
+                totalVol += vol;
+                totalOsm += vol * (pLip.osmolaridad/1000);
+                fungibles.push(...getBestSyringe(vol));
+                if (pLip.sodio) naFromLip = vol * (pLip.sodio / 1000);
             }
 
-            // B. MAGNESIO Y SULFATO (Prioridad 2)
-            let volMg = 0;
-            let sulfatoResultante = 0;
-            
-            if (targetMg > 0) {
-                const prodMg = getProductSmart('electrolitos', 'sel-magnesio', 'sulfato_magnesico');
-                
-                if (prodMg) {
-                    volMg = targetMg / (prodMg.concentracion_magnesio / 1000);
-                    
-                    const elVolMg = document.getElementById('vol-magnesio');
-                    if(elVolMg) elVolMg.value = volMg.toFixed(1);
-                    
-                    totalVol += volMg;
-                    totalOsm += volMg * (prodMg.osmolaridad/1000);
-                    fungibles.push(...getBestSyringe(volMg));
-                    
-                    // CALCULO DEL SULFATO (Aquí estaba uno de los fallos si prodMg era null)
-                    if (prodMg.concentracion_sulfato) {
-                        sulfatoResultante = volMg * (prodMg.concentracion_sulfato / 1000);
-                    }
-                }
+            // --- B. ELECTROLITOS ---
+
+            // 1. FOSFATO
+            let volGlyco = 0, naFromGlyco = 0;
+            const pPhos = getProd('sel-fosfato', 'electrolitos');
+            if (targetP > 0 && pPhos) {
+                volGlyco = calcVol(targetP, pPhos.concentracion_fosfato);
+                document.getElementById('vol-fosfato').value = volGlyco.toFixed(1);
+                totalVol += volGlyco;
+                totalOsm += volGlyco * (pPhos.osmolaridad/1000);
+                fungibles.push(...getBestSyringe(volGlyco));
+                if (pPhos.concentracion_sodio) naFromGlyco = volGlyco * (pPhos.concentracion_sodio / 1000);
             } else {
-                const elVolMg = document.getElementById('vol-magnesio');
-                if(elVolMg) elVolMg.value = 0;
+                document.getElementById('vol-fosfato').value = 0;
             }
-            // Actualizar input readonly de Sulfato
-            const elSulf = document.getElementById('input-sulfato');
-            if(elSulf) elSulf.value = sulfatoResultante.toFixed(1);
 
+            // 2. MAGNESIO (Calcula Sulfato)
+            let volMg = 0, sulfatoRes = 0;
+            const pMg = getProd('sel-magnesio', 'electrolitos');
+            if (targetMg > 0 && pMg) {
+                volMg = calcVol(targetMg, pMg.concentracion_magnesio);
+                document.getElementById('vol-magnesio').value = volMg.toFixed(1);
+                totalVol += volMg;
+                totalOsm += volMg * (pMg.osmolaridad/1000);
+                fungibles.push(...getBestSyringe(volMg));
+                if (pMg.concentracion_sulfato) sulfatoRes = volMg * (pMg.concentracion_sulfato / 1000);
+            } else {
+                document.getElementById('vol-magnesio').value = 0;
+            }
+            if(document.getElementById('input-sulfato')) document.getElementById('input-sulfato').value = sulfatoRes.toFixed(1);
 
-            // C. SODIO Y CLORO (Parte 1: Llenar Sodio con NaCl)
+            // 3. SODIO (Rellena el resto con NaCl o Acetato Na seleccionado)
             let naNeeded = targetNa - naFromLip - naFromGlyco;
-            let volNaCl = 0;
-            let clFromNaCl = 0;
+            let volNa = 0, clFromNa = 0;
+            const pNa = getProd('sel-sodio', 'electrolitos'); // Por defecto NaCl 20%
             
-            if (naNeeded > 0) {
-                const prodNa = getProductSmart('electrolitos', 'sel-sodio', 'cloruro_sodico');
-                
-                if (prodNa) {
-                    volNaCl = naNeeded / (prodNa.concentracion_sodio / 1000);
-                    
-                    // CALCULO DEL CLORO (Aquí estaba el otro fallo)
-                    if (prodNa.concentracion_cloro) {
-                        clFromNaCl = volNaCl * (prodNa.concentracion_cloro / 1000);
-                    }
-                    
-                    document.getElementById('vol-sodio').value = volNaCl.toFixed(1);
-                    totalVol += volNaCl;
-                    totalOsm += volNaCl * (prodNa.osmolaridad/1000);
-                    fungibles.push(...getBestSyringe(volNaCl));
-                }
+            if (naNeeded > 0 && pNa) {
+                volNa = calcVol(naNeeded, pNa.concentracion_sodio);
+                document.getElementById('vol-sodio').value = volNa.toFixed(1);
+                totalVol += volNa;
+                totalOsm += volNa * (pNa.osmolaridad/1000);
+                fungibles.push(...getBestSyringe(volNa));
+                if (pNa.concentracion_cloro) clFromNa = volNa * (pNa.concentracion_cloro / 1000);
             } else {
-                 document.getElementById('vol-sodio').value = 0;
-                 if(naNeeded < -2) warnings.push(`⚠️ Exceso de Sodio por Glicerofosfato/Lípidos (+${Math.abs(naNeeded).toFixed(0)} mEq)`);
+                document.getElementById('vol-sodio').value = 0;
             }
 
-            // D. POTASIO, CLORO y ACETATO (El Solver de Mezcla)
-            let volKCl = 0;
-            let volKAc = 0;
-            let clTotal = clFromNaCl;
+            // 4. POTASIO (Balance KCl vs AcetatoK)
+            // Aquí usamos los productos fijos de la DB para el solver
+            const pKCl = materiasPrimas.electrolitos['cloruro_potasico_braun'];
+            const pKAc = materiasPrimas.electrolitos['acetato_potasico_braun']; 
+            // NOTA: Si quisieras usar "Acetato Sódico" como pediste en el prompt, tendrías que haberlo añadido a la DB.
+            // Asumo que te referías a "Acetato Potásico" para el balance de K, que es lo estándar.
+
+            let volKCl = 0, volKAc = 0;
+            let clTotal = clFromNa;
             let acTotal = 0;
 
-            // Para el solver de potasio, solemos usar fuentes fijas (KCl y Acetato K)
-            // Usamos getProductSmart para asegurar que las encuentra aunque cambien de nombre
-            const prodKCl = getProductSmart('electrolitos', 'null', 'cloruro_potasico');
-            const prodKAc = getProductSmart('electrolitos', 'null', 'acetato_potasico');
-
-            if (targetK > 0 && prodKCl && prodKAc) {
+            if (targetK > 0 && pKCl && pKAc) {
+                // Algoritmo Solver: Intentar satisfacer Cloro primero
+                let k_as_kcl = 0;
+                let k_as_kac = 0;
                 
-                let kAsKCl_needed_for_Cl = targetCl - clFromNaCl;
-                let k_split_kcl = 0;
-                let k_split_kac = 0;
-
+                // Si el usuario edita Acetato manualmente, priorizamos eso
                 if (sourceTrigger === 'input-acetato') {
-                    // Prioridad Acetato
-                    let desiredKAc = targetAcetato; 
-                    if (desiredKAc > targetK) desiredKAc = targetK;
-                    if (desiredKAc < 0) desiredKAc = 0;
-                    
-                    k_split_kac = desiredKAc;
-                    k_split_kcl = targetK - desiredKAc;
+                    let desiredAc = targetAcetato;
+                    if (desiredAc > targetK) desiredAc = targetK; // No podemos dar mas acetato que K total
+                    k_as_kac = desiredAc;
+                    k_as_kcl = targetK - desiredAc;
                 } else {
-                    // Prioridad Cloro (Default)
-                    let clDeficit = targetCl - clFromNaCl;
+                    // Default: Priorizar Cloro
+                    let clDeficit = targetCl - clFromNa;
+                    if (clDeficit < 0) clDeficit = 0;
                     
-                    if (clDeficit > targetK) {
-                        k_split_kcl = targetK;
-                        k_split_kac = 0;
-                    } else if (clDeficit <= 0) {
-                        k_split_kcl = 0;
-                        k_split_kac = targetK;
+                    if (clDeficit >= targetK) {
+                        k_as_kcl = targetK; // Todo K como Cloruro
                     } else {
-                        k_split_kcl = clDeficit;
-                        k_split_kac = targetK - clDeficit;
+                        k_as_kcl = clDeficit;
+                        k_as_kac = targetK - clDeficit; // El resto como Acetato
                     }
                 }
 
-                // Cálculo seguro usando las concentraciones detectadas
-                if (prodKCl.concentracion_potasio) {
-                    volKCl = k_split_kcl / (prodKCl.concentracion_potasio / 1000);
-                }
-                if (prodKAc.concentracion_potasio) {
-                    volKAc = k_split_kac / (prodKAc.concentracion_potasio / 1000);
-                }
+                volKCl = calcVol(k_as_kcl, pKCl.concentracion_potasio); // Asegúrate de haber corregido la DB (.concentracion_potasio)
+                volKAc = calcVol(k_as_kac, pKAc.concentracion_potasio);
 
-                const elVolKcl = document.getElementById('vol-kcl');
-                const elVolKac = document.getElementById('vol-k-acetato');
-                
-                if(elVolKcl) elVolKcl.value = volKCl.toFixed(1);
-                if(elVolKac) elVolKac.value = volKAc.toFixed(1);
+                document.getElementById('vol-kcl').value = volKCl.toFixed(1);
+                document.getElementById('vol-k-acetato').value = volKAc.toFixed(1);
 
-                totalVol += volKCl + volKAc;
-                totalOsm += volKCl * (prodKCl.osmolaridad/1000) + volKAc * (prodKAc.osmolaridad/1000);
-                if(volKCl > 0) fungibles.push(...getBestSyringe(volKCl));
-                if(volKAc > 0) fungibles.push(...getBestSyringe(volKAc));
+                totalVol += (volKCl + volKAc);
+                totalOsm += volKCl * (pKCl.osmolaridad/1000) + volKAc * (pKAc.osmolaridad/1000);
+                if(volKCl>0) fungibles.push(...getBestSyringe(volKCl));
+                if(volKAc>0) fungibles.push(...getBestSyringe(volKAc));
 
-                // Calcular reales finales
-                clTotal = clFromNaCl + k_split_kcl;
-                acTotal = k_split_kac;
+                clTotal += k_as_kcl; // KCl aporta Cl
+                acTotal += k_as_kac; // KAc aporta Ac
             } else {
-                if(document.getElementById('vol-kcl')) document.getElementById('vol-kcl').value = 0;
-                if(document.getElementById('vol-k-acetato')) document.getElementById('vol-k-acetato').value = 0;
+                document.getElementById('vol-kcl').value = 0;
+                document.getElementById('vol-k-acetato').value = 0;
             }
 
-            // Actualizar inputs calculados (Evita bucle infinito si el trigger fue el propio input)
-            const inCl = document.getElementById('input-cloro');
-            const inAc = document.getElementById('input-acetato');
-            
-            if (inCl && sourceTrigger !== 'input-cloro') inCl.value = clTotal.toFixed(1);
-            if (inAc && sourceTrigger !== 'input-acetato') inAc.value = acTotal.toFixed(1);
+            // Actualizar inputs calculados (sin disparar evento recursivo)
+            const inpCl = document.getElementById('input-cloro');
+            const inpAc = document.getElementById('input-acetato');
+            if (inpCl && sourceTrigger !== 'input-cloro') inpCl.value = clTotal.toFixed(1);
+            if (inpAc && sourceTrigger !== 'input-acetato') inpAc.value = acTotal.toFixed(1);
 
 
-            // E. CALCIO
-            if (targetCa > 0) {
-                const prodCa = getProductSmart('electrolitos', 'sel-calcio', 'gluconato_calcico');
-                if (prodCa) {
-                    const concCa = prodCa.concentracion_calcio_mEq || (prodCa.concentracion_calcio_mmol * 2);
-                    const volCa = (targetCa / (concCa / 1000));
-                    document.getElementById('vol-calcio').value = volCa.toFixed(1);
-                    totalVol += volCa;
-                    totalOsm += volCa * (prodCa.osmolaridad/1000);
-                    fungibles.push(...getBestSyringe(volCa));
-                }
+            // 5. CALCIO
+            const pCa = getProd('sel-calcio', 'electrolitos');
+            if (targetCa > 0 && pCa) {
+                // Preferimos mEq, si no mmol*2
+                const conc = pCa.concentracion_calcio_mEq || (pCa.concentracion_calcio_mmol * 2);
+                const vol = calcVol(targetCa, conc);
+                document.getElementById('vol-calcio').value = vol.toFixed(1);
+                totalVol += vol;
+                totalOsm += vol * (pCa.osmolaridad/1000);
+                fungibles.push(...getBestSyringe(vol));
             } else {
                 document.getElementById('vol-calcio').value = 0;
             }
 
-            // F. VITAMINAS
-            const vits = ['sel-vit-1', 'sel-vit-2', 'sel-vit-3'];
-            const vitVols = ['vol-vit-1', 'vol-vit-2', 'vol-vit-3'];
-            vits.forEach((selId, index) => {
-                const el = document.getElementById(selId);
-                const volIn = document.getElementById(vitVols[index]);
-                // Usamos getProductSmart para saber si hay volumen aunque no haya selección manual (opcional)
-                // Pero para vitaminas es mejor respetar selección manual.
-                if (el && el.value && volIn) {
-                    const v = parseFloat(volIn.value) || 0;
-                    totalVol += v;
-                    if(v > 0) fungibles.push(...getBestSyringe(v));
+            // 6. VITAMINAS
+            ['sel-vit-1', 'sel-vit-2', 'sel-vit-3'].forEach((id, idx) => {
+                const volVal = parseFloat(document.getElementById(`vol-vit-${idx+1}`)?.value) || 0;
+                // Sumamos si hay volumen y selección (o solo volumen si es input manual)
+                if (volVal > 0) {
+                    totalVol += volVal;
+                    fungibles.push(...getBestSyringe(volVal));
                 }
             });
-            
-            // Tiamina Alta Dosis (Protocolo)
-            const valTiamina = document.getElementById('val-tiamina');
-            const rowVit4 = document.getElementById('row-vit-4');
-            const volVit4 = document.getElementById('vol-vit-4');
-            if (valTiamina && rowVit4 && volVit4 && valTiamina.innerText.includes("300")) {
-                rowVit4.classList.remove('hidden');
-                volVit4.value = 3;
-                totalVol += 3;
-                fungibles.push(...getBestSyringe(3));
-            } else {
-                if(rowVit4) rowVit4.classList.add('hidden');
-                if(volVit4) volVit4.value = 0;
+            // Tiamina Alta
+            const volTiamina = parseFloat(document.getElementById('vol-vit-4')?.value) || 0;
+            if (volTiamina > 0) {
+                totalVol += volTiamina;
+                fungibles.push(...getBestSyringe(volTiamina));
             }
 
-            // G. AGUA (API)
+
+            // --- RESULTADOS FINALES ---
+            // API (Agua)
             let volApi = targetVolAdmin - totalVol;
             if (volApi < 0) {
-                warnings.push(`⚠️ <strong>Volumen Excedido:</strong> ${totalVol.toFixed(0)}ml > ${targetVolAdmin}ml.`);
+                warnings.push(`⚠️ Volumen excedido en ${Math.abs(volApi).toFixed(0)} ml`);
                 volApi = 0;
             }
             document.getElementById('vol-api').value = volApi.toFixed(1);
-            totalVol += volApi;
+            totalVol += volApi; // Ahora totalVol es igual a targetVolAdmin (o más si nos pasamos)
 
-            // H. RESULTADOS FINALES
-            const finalOsmolarity = totalVol > 0 ? totalOsm / (totalVol/1000) : 0;
-            const osmEl = document.getElementById('val-osmolaridad');
-            const osmStatus = document.getElementById('osmolaridad-status');
-            const elabOsm = document.getElementById('elab-osmolaridad');
+            // Osmolaridad Final
+            const finalOsm = totalVol > 0 ? (totalOsm / (totalVol/1000)) : 0;
+            document.getElementById('val-osmolaridad').innerText = finalOsm.toFixed(0);
+            document.getElementById('elab-osmolaridad').innerText = finalOsm.toFixed(0);
+
+            // Alertas Osmolaridad
+            const via = document.getElementById('via-admin')?.value || 'central';
+            const statusEl = document.getElementById('osmolaridad-status');
             
-            if(osmEl) osmEl.innerText = finalOsmolarity.toFixed(0);
-            if(elabOsm) elabOsm.innerText = finalOsmolarity.toFixed(0);
+            if (via === 'periferica') {
+                if (finalOsm > 800) {
+                    if(statusEl) { statusEl.innerText = "PELIGRO (>800)"; statusEl.className = "text-[10px] font-bold text-red-600 bg-red-100 px-2 py-1 rounded border border-red-200"; }
+                    warnings.push("Osmolaridad > 800 mOsm/L no apta para vía periférica.");
+                } else {
+                    if(statusEl) { statusEl.innerText = "OK Periférica"; statusEl.className = "text-[10px] font-bold text-green-600 bg-green-100 px-2 py-1 rounded border border-green-200"; }
+                }
+            } else {
+                 if(statusEl) { statusEl.innerText = "OK Central"; statusEl.className = "text-[10px] font-bold text-blue-600 bg-blue-100 px-2 py-1 rounded border border-blue-200"; }
+            }
 
-            // Warning Box Update
+            // Mostrar Warnings
             const warnBox = document.getElementById('compounding-warnings');
             if (warnBox) {
                 if (warnings.length > 0) {
                     warnBox.innerHTML = warnings.join('<br>');
                     warnBox.classList.remove('hidden');
-                    warnBox.className = 'mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700';
                 } else {
                     warnBox.classList.add('hidden');
                 }
             }
 
-            // Actualizar Bolsa y Fungibles
-            let bag = ""; if (totalVol <= 1000) bag = "Bolsa EVA 1 Litro"; else if (totalVol <= 3000) bag = "Bolsa EVA 3 Litros"; else bag = "Excede capacidad";
+            // Bolsa y Fungibles
+            let bag = "Bolsa EVA 3 Litros"; // Default safety
+            if (totalVol <= 1000) bag = "Bolsa EVA 1 Litro";
+            else if (totalVol > 3000) bag = "Excede 3L (Revisar)";
             document.getElementById('res-bolsa').value = bag;
 
-            const fungibleCounts = {}; fungibles.forEach(x => { fungibleCounts[x] = (fungibleCounts[x] || 0) + 1; });
-            const fungibleHtml = Object.entries(fungibleCounts).map(([k,v]) => `<div>${v}x ${k}</div>`).join('');
-            if(document.getElementById('res-fungibles')) document.getElementById('res-fungibles').innerHTML = fungibleHtml || "Sin material calculado";
+            const fCounts = {}; fungibles.forEach(x => fCounts[x] = (fCounts[x] || 0) + 1);
+            const fHtml = Object.entries(fCounts).map(([k,v]) => `<div>${v}x ${k}</div>`).join('');
+            if(document.getElementById('res-fungibles')) document.getElementById('res-fungibles').innerHTML = fHtml || "--";
         }
 
        // Call init on load
@@ -2227,121 +2153,36 @@
                 document.getElementById('propofol-warning').classList.add('hidden');
             }
 
-            // --- GENERACIÓN DE LA LISTA DE ELECTROLITOS (CORREGIDO: Con valores iniciales) ---
+            // --- GENERACIÓN DE LA LISTA DE ELECTROLITOS (LIMPIA) ---
             const elList = document.getElementById('electro-list');
             elList.innerHTML = '';
 
-            // Definir valores por defecto basados en peso (Mínimos del rango)
-            const defNa = (1 * pesoCalculo).toFixed(0);
-            const defK = (1 * pesoCalculo).toFixed(0);
-            const defCa = "10"; // Dosis estándar inicio
-            const defMg = "10"; // Dosis estándar inicio
-            const defP = "20";  // Dosis estándar inicio
-
-            // 1. SODIO (Estándar)
-            elList.innerHTML += `
-            <li class="flex items-center justify-between border-b border-slate-100 py-2">
+            // Función helper para crear filas limpias
+            const createRow = (label, id, unit, subtitle, isAuto = false, isReadOnly = false) => `
+            <li class="flex items-center justify-between border-b border-slate-100 py-2 ${isAuto ? 'bg-blue-50/30 px-2 -mx-2 rounded' : ''}">
                 <div class="flex flex-col">
-                    <span class="font-medium text-sm text-slate-700">Sodio</span>
-                    <span class="text-[10px] text-blue-600 font-semibold">Rango: ${(1*pesoCalculo).toFixed(0)} - ${(2*pesoCalculo).toFixed(0)} mEq</span>
+                    <span class="font-medium text-sm text-slate-700">${label}</span>
+                    <span class="text-[10px] ${isAuto ? 'text-slate-400' : 'text-blue-600 font-semibold'}">${subtitle}</span>
                 </div>
                 <div class="flex items-center gap-1">
-                    <input type="number" id="input-sodio" value="${defNa}" onchange="calculateCompounding('input-sodio')" class="w-20 text-sm border-slate-300 rounded-md p-1 border text-right focus:ring-blue-500 focus:border-blue-500 bg-slate-50 font-bold text-slate-700" placeholder="0">
-                    <span class="text-xs text-slate-500 w-8">mEq</span>
+                    <input type="number" id="${id}" 
+                           ${isReadOnly ? 'readonly' : `onchange="calculateCompounding('${id}')"`} 
+                           class="w-20 text-sm border-${isAuto ? 'blue-300' : 'slate-300'} rounded-md p-1 border text-right focus:ring-blue-500 bg-${isAuto || isReadOnly ? 'white' : 'slate-50'} font-bold text-${isAuto ? 'blue-800' : 'slate-700'} ${isReadOnly ? 'cursor-not-allowed text-slate-400' : ''}" 
+                           placeholder="${isAuto ? 'Auto' : '0'}">
+                    <span class="text-xs text-slate-500 w-8">${unit}</span>
                 </div>
             </li>`;
 
-            // 2. POTASIO (Estándar)
-            elList.innerHTML += `
-            <li class="flex items-center justify-between border-b border-slate-100 py-2">
-                <div class="flex flex-col">
-                    <span class="font-medium text-sm text-slate-700">Potasio</span>
-                    <span class="text-[10px] text-blue-600 font-semibold">Rango: ${(1*pesoCalculo).toFixed(0)} - ${(1.5*pesoCalculo).toFixed(0)} mEq</span>
-                </div>
-                <div class="flex items-center gap-1">
-                    <input type="number" id="input-potasio" value="${defK}" onchange="calculateCompounding('input-potasio')" class="w-20 text-sm border-slate-300 rounded-md p-1 border text-right focus:ring-blue-500 focus:border-blue-500 bg-slate-50 font-bold text-slate-700" placeholder="0">
-                    <span class="text-xs text-slate-500 w-8">mEq</span>
-                </div>
-            </li>`;
+            elList.innerHTML += createRow('Sodio', 'input-sodio', 'mEq', `Rango: ${(1*pesoCalculo).toFixed(0)} - ${(2*pesoCalculo).toFixed(0)} mEq`);
+            elList.innerHTML += createRow('Potasio', 'input-potasio', 'mEq', `Rango: ${(1*pesoCalculo).toFixed(0)} - ${(1.5*pesoCalculo).toFixed(0)} mEq`);
+            elList.innerHTML += createRow('Cloro', 'input-cloro', 'mEq', 'Derivado de NaCl y KCl', true); // Auto
+            elList.innerHTML += createRow('Acetato', 'input-acetato', 'mEq', 'Equilibrio Ácido-Base', true); // Auto
+            elList.innerHTML += createRow('Calcio', 'input-calcio', 'mEq', '10 - 15 mEq Total');
+            elList.innerHTML += createRow('Magnesio', 'input-magnesio', 'mEq', '8 - 20 mEq');
+            elList.innerHTML += createRow('Sulfato', 'input-sulfato', 'mEq', 'Derivado de Magnesio', false, true); // Readonly
+            elList.innerHTML += createRow('Fósforo', 'input-fosforo', 'mmol', '20 - 40 mmol');
 
-            // 3. CLORO (Calculado)
-            elList.innerHTML += `
-            <li class="flex items-center justify-between border-b border-slate-100 py-2 bg-blue-50/30 px-2 -mx-2 rounded">
-                <div class="flex flex-col">
-                    <span class="font-medium text-sm text-slate-700">Cloro</span>
-                    <span class="text-[10px] text-slate-400">Derivado de NaCl y KCl</span>
-                </div>
-                <div class="flex items-center gap-1">
-                    <input type="number" id="input-cloro" onchange="calculateCompounding('input-cloro')" class="w-20 text-sm border-blue-300 rounded-md p-1 border text-right focus:ring-blue-500 bg-white font-bold text-blue-800" placeholder="Auto">
-                    <span class="text-xs text-slate-500 w-8">mEq</span>
-                </div>
-            </li>`;
-
-            // 4. ACETATO (Calculado)
-            elList.innerHTML += `
-            <li class="flex items-center justify-between border-b border-slate-100 py-2 bg-blue-50/50 -mx-2 px-2 rounded mt-1">
-                <div class="flex flex-col">
-                    <span class="font-medium text-sm text-slate-700">Acetato</span>
-                    <span class="text-[10px] text-slate-500">Equilibrio Ácido-Base</span>
-                </div>
-                <div class="flex items-center gap-1">
-                    <input type="number" id="input-acetato" onchange="calculateCompounding('input-acetato')" class="w-20 text-sm border-blue-300 rounded-md p-1 border text-right focus:ring-blue-500 bg-white font-bold text-blue-800" placeholder="Auto">
-                    <span class="text-xs text-slate-500 w-8">mEq</span>
-                </div>
-            </li>`;
-
-            // 5. CALCIO
-            elList.innerHTML += `
-            <li class="flex items-center justify-between border-b border-slate-100 py-2">
-                <div class="flex flex-col">
-                    <span class="font-medium text-sm text-slate-700">Calcio</span>
-                    <span class="text-[10px] text-blue-600 font-semibold">10 - 15 mEq Total</span>
-                </div>
-                <div class="flex items-center gap-1">
-                    <input type="number" id="input-calcio" value="${defCa}" onchange="calculateCompounding('input-calcio')" class="w-20 text-sm border-slate-300 rounded-md p-1 border text-right focus:ring-blue-500 bg-slate-50 font-bold text-slate-700" placeholder="0">
-                    <span class="text-xs text-slate-500 w-8">mEq</span>
-                </div>
-            </li>`;
-
-            // 6. MAGNESIO
-            elList.innerHTML += `
-            <li class="flex items-center justify-between border-b border-slate-100 py-2">
-                <div class="flex flex-col">
-                    <span class="font-medium text-sm text-slate-700">Magnesio</span>
-                    <span class="text-[10px] text-blue-600 font-semibold">8 - 20 mEq</span>
-                </div>
-                <div class="flex items-center gap-1">
-                    <input type="number" id="input-magnesio" value="${defMg}" onchange="calculateCompounding('input-magnesio')" class="w-20 text-sm border-slate-300 rounded-md p-1 border text-right focus:ring-blue-500 bg-slate-50 font-bold text-slate-700" placeholder="0">
-                    <span class="text-xs text-slate-500 w-8">mEq</span>
-                </div>
-            </li>`;
-
-            // 7. SULFATO (Solo Lectura)
-            elList.innerHTML += `
-            <li class="flex items-center justify-between border-b border-slate-100 py-2 bg-gray-100/50 -mx-2 px-2 rounded opacity-80">
-                <div class="flex flex-col">
-                    <span class="font-medium text-sm text-slate-500">Sulfato</span>
-                    <span class="text-[10px] text-slate-400">Derivado de Magnesio</span>
-                </div>
-                <div class="flex items-center gap-1">
-                    <input type="number" id="input-sulfato" readonly class="w-20 text-sm border-transparent rounded-md p-1 bg-transparent text-right font-bold text-slate-500 cursor-not-allowed" placeholder="--">
-                    <span class="text-xs text-slate-500 w-8">mEq</span>
-                </div>
-            </li>`;
-
-            // 8. FÓSFORO
-            elList.innerHTML += `
-            <li class="flex items-center justify-between border-b border-slate-100 py-2">
-                <div class="flex flex-col">
-                    <span class="font-medium text-sm text-slate-700">Fósforo</span>
-                    <span class="text-[10px] text-blue-600 font-semibold">20 - 40 mmol</span>
-                </div>
-                <div class="flex items-center gap-1">
-                    <input type="number" id="input-fosforo" value="${defP}" onchange="calculateCompounding('input-fosforo')" class="w-20 text-sm border-slate-300 rounded-md p-1 border text-right focus:ring-blue-500 bg-slate-50 font-bold text-slate-700" placeholder="0">
-                    <span class="text-xs text-slate-500 w-8">mmol</span>
-                </div>
-            </li>`;
-
+            // Lógica de Tiamina e Insulina (se mantiene igual)
             if (hasRefeedingRisk) {
                 document.getElementById('val-tiamina').innerText = "300 mg (3 días)";
                 document.getElementById('val-tiamina').classList.add('text-red-600', 'font-extrabold');
@@ -2349,15 +2190,15 @@
                 document.getElementById('val-tiamina').innerText = "3 mg";
                 document.getElementById('val-tiamina').classList.remove('text-red-600', 'font-extrabold');
             }
-            
             const liInsulina = document.getElementById('li-insulina');
             if (gramsHC > 0) {
                 liInsulina.classList.remove('hidden');
                 const units = (gramsHC / 160) * 16;
                 document.getElementById('val-insulina').innerText = Math.round(units) + " UI";
-            } else {
-                liInsulina.classList.add('hidden');
-            }
+            } else { liInsulina.classList.add('hidden'); }
+            
+            // IMPORTANTE: Forzar un cálculo inicial (aunque sea con ceros) para preparar la ficha de elaboración
+            setTimeout(calculateCompounding, 100);
 
             // --- FLUID BALANCE LOGIC UPDATED ---
             const diuresis = parseFloat(document.getElementById('diuresis').value) || 0;
