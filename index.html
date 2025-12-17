@@ -850,15 +850,16 @@
                                         <input type="number" id="vol-vit-3" class="w-full border-slate-300 rounded-lg shadow-sm p-2.5 border bg-white text-sm" placeholder="0">
                                     </div>
                                 </div>
-                                <div id="row-vit-4" class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end hidden bg-yellow-50 p-2 rounded border border-yellow-200">
+                                <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end mt-2 pt-2 border-t border-slate-100">
                                     <div class="md:col-span-8">
-                                        <label class="block text-xs font-bold text-yellow-700 mb-1">Tiamina (Dosis Alta)</label>
-                                        <select id="sel-vit-4" class="w-full border-yellow-300 rounded-lg shadow-sm p-2.5 border bg-white text-sm font-bold text-yellow-800" disabled>
-                                            </select>
+                                        <label class="block text-xs font-bold text-slate-700 mb-1">Tiamina (Aditivo 4)</label>
+                                        <select id="sel-vit-4" class="w-full border-slate-300 rounded-lg shadow-sm p-2.5 border bg-white text-sm focus:ring-green-500 focus:border-green-500" onchange="updateVitaminVolume('sel-vit-4', 'vol-vit-4'); calculateCompounding()">
+                                            <option value="">Seleccionar Tiamina...</option>
+                                        </select>
                                     </div>
                                     <div class="md:col-span-4">
-                                        <label class="block text-xs font-bold text-yellow-700 mb-1">Volumen (ml)</label>
-                                        <input type="number" id="vol-vit-4" class="w-full border-yellow-300 rounded-lg shadow-sm p-2.5 border bg-white text-sm font-bold text-yellow-800" placeholder="0" readonly>
+                                        <label class="block text-xs font-medium text-slate-500 mb-1">Volumen (ml)</label>
+                                        <input type="number" id="vol-vit-4" class="w-full border-slate-300 rounded-lg shadow-sm p-2.5 border bg-white text-sm" placeholder="0">
                                     </div>
                                 </div>
                             </div>
@@ -1369,7 +1370,6 @@
 
         // FUNCIÓN MEJORADA: Llena los selectores dinámicamente desde la Base de Datos
         function initRawMaterials() {
-            // Helper para llenar selector
             const populateSelect = (selectId, category, filterFn = null) => {
                 const el = document.getElementById(selectId);
                 if (!el) return;
@@ -1380,7 +1380,6 @@
                     if (filterFn && !filterFn(item)) continue;
                     const opt = document.createElement('option');
                     opt.value = key;
-                    
                     let text = item.nombre;
                     if (item.codigo_nacional) text += ` (CN: ${item.codigo_nacional})`;
                     if (item.es_hepatico) text += ' [HEPÁTICO]';
@@ -1391,45 +1390,52 @@
                 if (el.options.length > 1) el.disabled = false;
             };
 
-            // 1. LLENAR LISTAS
+            // 1. LISTAS GENERALES
             populateSelect('sel-prot', 'proteinas');
             populateSelect('sel-hc', 'hidratos');
             populateSelect('sel-lip', 'lipidos');
             populateSelect('sel-fosfato', 'electrolitos', item => item.concentracion_fosfato > 0);
             populateSelect('sel-magnesio', 'electrolitos', item => item.concentracion_magnesio > 0);
             populateSelect('sel-calcio', 'electrolitos', item => (item.concentracion_calcio_mEq > 0 || item.concentracion_calcio_mmol > 0));
-            // Sodio: Todo lo que tenga Na pero NO sea Fosfato (para no duplicar Glycophos)
             populateSelect('sel-sodio', 'electrolitos', item => item.concentracion_sodio > 0 && !item.concentracion_fosfato);
             populateSelect('sel-api', 'electrolitos', item => item.nombre.toUpperCase().includes("AGUA") || item.nombre.toUpperCase().includes("API"));
             
             populateSelect('sel-bolsa', 'bolsas');
             populateSelect('sel-fungible', 'fungibles');
-            ['sel-vit-1', 'sel-vit-2', 'sel-vit-3'].forEach(id => populateSelect(id, 'vitaminas'));
+
+            // --- CAMBIO CLAVE AQUÍ ---
+            
+            // VITAMINAS 1, 2 y 3: EXCLUIR TIAMINA
+            // Mostramos todo lo que NO sea Tiamina/Benerva
+            ['sel-vit-1', 'sel-vit-2', 'sel-vit-3'].forEach(id => {
+                populateSelect(id, 'vitaminas', item => !item.nombre.toUpperCase().includes("TIAMINA") && !item.nombre.toUpperCase().includes("BENERVA"));
+            });
+
+            // VITAMINA 4: SOLO TIAMINA
             populateSelect('sel-vit-4', 'vitaminas', item => item.nombre.toUpperCase().includes("TIAMINA") || item.nombre.toUpperCase().includes("BENERVA"));
 
-            // 2. APLICAR PRE-SELECCIONES OBLIGATORIAS (Tu configuración por defecto)
+
+            // 2. PRE-SELECCIONES OBLIGATORIAS
             const defaults = {
-                'sel-prot': 'aminoplasmal_15', // Si en tu DB se llama diferente, ajusta este ID
+                'sel-prot': 'aminoplasmal_15',
                 'sel-hc': 'glucosa_braun_70',
                 'sel-lip': 'smoflipid_20',
-                'sel-fosfato': 'glicerofosfato_sodico', // Glicophos
+                'sel-fosfato': 'glicerofosfato_sodico',
                 'sel-sodio': 'cloruro_sodico_20',
                 'sel-magnesio': 'sulfato_magnesico_braun',
                 'sel-calcio': 'gluconato_calcico_5',
-                'sel-api': 'agua_inyectables_fresenius'
+                'sel-api': 'agua_inyectables_fresenius',
+                
+                // Pre-seleccionar Tiamina automáticamente si existe en la base de datos
+                'sel-vit-4': 'benerva_100' // Asegúrate que este ID coincide con tu DB
             };
 
             for (const [id, val] of Object.entries(defaults)) {
                 const el = document.getElementById(id);
-                // Solo seleccionamos si la opción existe en la lista (para evitar errores si cambias la DB)
                 if (el && el.querySelector(`option[value="${val}"]`)) {
                     el.value = val;
                 }
             }
-            
-            // Nota: El Potasio (KCl y Acetato) no tiene selector propio en tu HTML original 
-            // (eran inputs fijos "readonly"), pero la lógica interna usará los de la DB.
-            // Las vitaminas (sel-vit-1, 2, 3) se quedan en "Seleccionar..." (value="") como pediste.
         }
 
         // Helper to auto-fill volume for fixed-dose items like vitamins
@@ -1653,16 +1659,18 @@
                 document.getElementById('vol-calcio').value = 0;
             }
 
-            // 6. VITAMINAS
+            // 6. VITAMINAS Y ADITIVOS
+            // Aditivos 1, 2, 3
             ['sel-vit-1', 'sel-vit-2', 'sel-vit-3'].forEach((id, idx) => {
                 const volVal = parseFloat(document.getElementById(`vol-vit-${idx+1}`)?.value) || 0;
-                // Sumamos si hay volumen y selección (o solo volumen si es input manual)
                 if (volVal > 0) {
                     totalVol += volVal;
                     fungibles.push(...getBestSyringe(volVal));
                 }
             });
-            // Tiamina Alta
+
+            // Tiamina (Aditivo 4) - Tratamiento estándar
+            // Simplemente leemos el volumen que haya puesto el usuario (o el automático por preselección)
             const volTiamina = parseFloat(document.getElementById('vol-vit-4')?.value) || 0;
             if (volTiamina > 0) {
                 totalVol += volTiamina;
