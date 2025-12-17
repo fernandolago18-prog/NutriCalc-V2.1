@@ -1253,8 +1253,8 @@
                 },
                 "cloruro_potasico_braun": {
                     nombre: "CLORURO POTÁSICO 1M B.BRAUN",
-                    concentracion_potasio: 1000, 
-                    concentracion_cloro: 1000,   
+                    concentracion_potasio: 1000, // <--- CAMBIO CLAVE
+                    concentracion_cloro: 1000,   // <--- CAMBIO CLAVE
                     osmolaridad: 2000, 
                     codigo_nacional: 461037,
                     composicion: "Cloruro 1000 mEq/L + Potasio 1000 mEq/L"
@@ -2943,13 +2943,6 @@ function prepareAndPrint() {
 
         function resetDatabaseToFactory() {
             if (confirm("¿Restaurar la base de datos original? Se perderán tus productos personalizados.")) {
-                localStorage.removeItem('nutricalc_db_v1');
-                location.reload();
-            }
-        }
-
-        function resetDatabaseToFactory() {
-            if (confirm("¿Borrar personalizaciones y volver a valores de fábrica?")) {
                 localStorage.removeItem('nutricalc_db_v1');
                 location.reload();
             }
