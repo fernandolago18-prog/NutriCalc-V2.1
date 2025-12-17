@@ -917,6 +917,44 @@
             </div>
         </div>
 
+        <div id="view-config" class="hidden slide-in max-w-4xl mx-auto">
+            <div class="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
+                <div class="bg-slate-700 text-white px-6 py-4 flex justify-between items-center">
+                    <h2 class="text-lg font-bold"><i class="fa-solid fa-database mr-2"></i>Gestión de Base de Datos</h2>
+                    <span class="text-xs bg-orange-500 text-white px-2 py-1 rounded border border-orange-400">Modo Avanzado</span>
+                </div>
+                
+                <div class="p-6 space-y-6">
+                    <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+                        <div class="flex">
+                            <div class="flex-shrink-0"><i class="fa-solid fa-triangle-exclamation text-yellow-600"></i></div>
+                            <div class="ml-3">
+                                <p class="text-sm text-yellow-700">
+                                    <strong>Atención:</strong> Aquí puedes editar los medicamentos disponibles. 
+                                    Asegúrate de mantener el formato JSON correcto (comillas, comas, etc.). 
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-2">Editor de Datos (JSON)</label>
+                        <textarea id="db-editor" rows="20" class="w-full font-mono text-xs p-4 bg-slate-800 text-green-400 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 shadow-inner" spellcheck="false"></textarea>
+                    </div>
+
+                    <div class="flex justify-between items-center pt-4 border-t border-slate-100">
+                        <button onclick="resetDatabaseToFactory()" class="text-red-600 hover:text-red-800 text-sm font-bold px-4 py-2 border border-red-200 rounded hover:bg-red-50 transition">
+                            <i class="fa-solid fa-rotate-left mr-2"></i>Restaurar Fábrica
+                        </button>
+                        
+                        <button onclick="saveUserDatabase()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-xl shadow-md transition transform hover:scale-105">
+                            <i class="fa-solid fa-save mr-2"></i>GUARDAR CAMBIOS
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
     </main>
     
 <div id="printable-area" class="hidden bg-white p-8">
@@ -1057,8 +1095,9 @@
     </div> 
 
     <script>
-        // Database of Raw Materials (Stored for future logic)
-        const materiasPrimas = {
+        // 1. BASE DE DATOS ORIGINAL (BACKUP)
+        // Renombramos la constante para que sirva de respaldo
+        const MATERIAS_PRIMAS_DEFAULT = {
             proteinas: {
                 "aminoplasmal_15": {
                     nombre: "AMINOPLASMAL B. BRAUN 15%",
@@ -1233,6 +1272,29 @@
             }
         };
 
+// 2. VARIABLE ACTIVA (Se llenará con datos del usuario o default)
+        let materiasPrimas = {};
+
+        // 3. FUNCIÓN DE CARGA INICIAL DE DATOS
+        function loadDatabase() {
+            const savedData = localStorage.getItem('nutricalc_db_v1');
+            
+            if (savedData) {
+                try {
+                    materiasPrimas = JSON.parse(savedData);
+                    console.log("Base de datos cargada desde LocalStorage");
+                } catch (e) {
+                    console.error("Error al leer datos, usando default", e);
+                    materiasPrimas = JSON.parse(JSON.stringify(MATERIAS_PRIMAS_DEFAULT));
+                }
+            } else {
+                console.log("Iniciando con Base de Datos por defecto");
+                materiasPrimas = JSON.parse(JSON.stringify(MATERIAS_PRIMAS_DEFAULT));
+            }
+            // Inicializar selectores una vez cargados los datos
+            initRawMaterials();
+        }
+        
         // Safety Limits for Parenteral Nutrition Preparation (Concentration per Liter of mixture)
         const limitesSeguridad = {
             // Electrolitos (Concentraciones máximas mEq/L o mmol/L)
@@ -1259,6 +1321,18 @@
 
         // Initialize Raw Materials (Adding items)
         function initRawMaterials() {
+            // LIMPIEZA PREVIA (Para evitar duplicados al recargar)
+            const idsToClean = ['sel-prot', 'sel-hc', 'sel-lip', 'sel-vit-1', 'sel-vit-2', 'sel-vit-3', 'sel-bolsa', 'sel-fungible'];
+            idsToClean.forEach(id => {
+                const el = document.getElementById(id);
+                if(el) el.length = 1; // Mantiene solo la opción "Seleccionar..."
+            });
+            // Limpieza de listas fijas (Opcional, si quisieras editarlas también)
+            ['sel-fosfato', 'sel-sodio', 'sel-calcio', 'sel-api', 'sel-magnesio'].forEach(id => {
+                 const el = document.getElementById(id);
+                 if(el) el.innerHTML = ''; 
+            });
+            
             const selProt = document.getElementById('sel-prot');
             const selHc = document.getElementById('sel-hc'); 
             const selLip = document.getElementById('sel-lip'); 
@@ -1856,9 +1930,9 @@
             if(document.getElementById('res-fungibles')) document.getElementById('res-fungibles').innerHTML = fungibleHtml || "Sin material calculado";
         }
 
-        // Call init on load
+       // Call init on load
         window.addEventListener('DOMContentLoaded', () => {
-            initRawMaterials();
+            loadDatabase(); // CARGAR DB PRIMERO (Esto llamará a initRawMaterials internamente)
         });
 
         // State management
@@ -1869,20 +1943,22 @@
         function switchTab(tab) {
             currentTab = tab;
             
-            // Define all possible tabs and views
-            const tabs = ['calculadora', 'elaboracion', 'bibliografia'];
+            // Actualizado para incluir config
+            const tabs = ['calculadora', 'elaboracion', 'bibliografia', 'config'];
             const views = {
                 'calculadora': 'view-calculadora',
                 'elaboracion': 'view-elaboracion',
-                'bibliografia': 'view-bibliografia'
+                'bibliografia': 'view-bibliografia',
+                'config': 'view-config'
             };
             const tabIds = {
                 'calculadora': 'tab-calc',
                 'elaboracion': 'tab-elab',
-                'bibliografia': 'tab-biblio'
+                'bibliografia': 'tab-biblio',
+                'config': 'tab-config'
             };
 
-            // Hide all views and deactivate all tabs
+            // Ocultar todo
             tabs.forEach(t => {
                 const viewEl = document.getElementById(views[t]);
                 const tabEl = document.getElementById(tabIds[t]);
@@ -1894,7 +1970,7 @@
                 }
             });
 
-            // Show selected view and activate selected tab
+            // Mostrar activo
             const activeView = document.getElementById(views[tab]);
             const activeTab = document.getElementById(tabIds[tab]);
             
@@ -1904,22 +1980,23 @@
                 activeTab.classList.remove('inactive');
             }
 
-            // Special logic for elaboration tab update
+            // Lógica específica por pestaña
             if (tab === 'elaboracion') {
                 updateElaborationView();
-                // Trigger calculation after view update
                 setTimeout(calculateCompounding, 100); 
                 
-                // --- Lógica Hepática Específica ---
+                // Lógica Hepática
                 const uciTipo = document.getElementById('uci-tipo').value;
                 if (mode === 'uci' && uciTipo === 'hepatico') {
                     const selProt = document.getElementById('sel-prot');
                     if(selProt) {
                         selProt.value = 'aminosteril_hepa_8';
-                        // Recalcular inmediatamente para aplicar la nueva concentración
                         setTimeout(calculateCompounding, 150);
                     }
                 }
+            } else if (tab === 'config') {
+                // Cargar JSON en el editor
+                document.getElementById('db-editor').value = JSON.stringify(materiasPrimas, null, 4);
             }
         }
 
@@ -2629,6 +2706,38 @@ function prepareAndPrint() {
             labelsContainer.innerHTML = createLabelHTML() + createLabelHTML();
             window.print();
         }
+
+        // --- FUNCIONES DE GESTIÓN DE BASE DE DATOS ---
+
+        function saveUserDatabase() {
+            const jsonText = document.getElementById('db-editor').value;
+            try {
+                const parsedData = JSON.parse(jsonText);
+                
+                // Validación básica
+                if (!parsedData.proteinas || !parsedData.hidratos) {
+                    throw new Error("Estructura inválida: Faltan categorías principales.");
+                }
+
+                // Guardar
+                materiasPrimas = parsedData;
+                localStorage.setItem('nutricalc_db_v1', JSON.stringify(materiasPrimas));
+                
+                if(confirm("Datos guardados correctamente. La página se recargará para aplicar los cambios.")) {
+                    location.reload();
+                }
+            } catch (e) {
+                alert("❌ ERROR JSON: " + e.message);
+            }
+        }
+
+        function resetDatabaseToFactory() {
+            if (confirm("¿Borrar personalizaciones y volver a valores de fábrica?")) {
+                localStorage.removeItem('nutricalc_db_v1');
+                location.reload();
+            }
+        }
+        
     </script>
 </body>
 </html>
