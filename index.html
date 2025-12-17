@@ -1253,8 +1253,8 @@
                 },
                 "cloruro_potasico_braun": {
                     nombre: "CLORURO POTÁSICO 1M B.BRAUN",
-                    concentracion_potasio: 1000, // Antes era genérico "concentracion_mEq"
-                    concentracion_cloro: 1000,   // Ahora especificamos ambos
+                    concentracion_potasio: 1000, 
+                    concentracion_cloro: 1000,   
                     osmolaridad: 2000, 
                     codigo_nacional: 461037,
                     composicion: "Cloruro 1000 mEq/L + Potasio 1000 mEq/L"
@@ -1801,12 +1801,12 @@
                 }
 
                 // Asignar volúmenes (Asumiendo concentración 1 mEq/ml para ambos estándar Braun)
-                // Si las concentraciones cambian en DB, ajustar aquí:
-                const prodKCl = materiasPrimas.electrolitos.cloruro_potasico_braun; // 1 mEq/ml
-                const prodKAc = materiasPrimas.electrolitos.acetato_potasico_braun; // 1 mEq/ml
+                const prodKCl = materiasPrimas.electrolitos.cloruro_potasico_braun; 
+                const prodKAc = materiasPrimas.electrolitos.acetato_potasico_braun; 
 
-                volKCl = k_split_kcl / (prodKCl.concentracion_mEq / 1000);
-                volKAc = k_split_kac / (prodKAc.concentracion_potasio / 1000); // Asumiendo propiedad concentracion_potasio existe
+                volKCl = k_split_kcl / (prodKCl.concentracion_potasio / 1000);
+                
+                volKAc = k_split_kac / (prodKAc.concentracion_potasio / 1000);
 
                 const elVolKcl = document.getElementById('vol-kcl');
                 const elVolKac = document.getElementById('vol-k-acetato');
