@@ -2793,7 +2793,10 @@ function prepareAndPrint() {
             const volFinal = document.getElementById('elab-volumen').innerText;
             const osmFinal = document.getElementById('val-osmolaridad').innerText;
             const viaAdmin = document.getElementById('via-admin').value === 'central' ? 'CENTRAL' : 'PERIFÉRICA';
-            
+
+            const volNumerico = parseFloat(volFinal) || 0; 
+            const velocidadInfusion = (volNumerico / 24).toFixed(1);
+    
             document.getElementById('p-vol-final').innerText = volFinal;
             document.getElementById('p-osm-final').innerText = osmFinal + ' mOsm/L';
             document.getElementById('p-bolsa').innerText = document.getElementById('res-bolsa').value;
@@ -2835,6 +2838,11 @@ function prepareAndPrint() {
                          <div class="lbl-box-osm" style="flex:1"><span style="font-size:7pt; display:block;">VOLUMEN</span><span class="lbl-val-bold" style="font-size:11pt;">${volFinal}</span></div>
                          <div class="lbl-box-osm" style="flex:1"><span style="font-size:7pt; display:block;">KCAL</span><span class="lbl-val-bold" style="font-size:11pt;">${kcalTotal.toFixed(0)}</span></div>
                          <div class="lbl-box-osm" style="flex:1"><span style="font-size:7pt; display:block;">VIA</span><span class="lbl-via" style="color:${viaAdmin==='CENTRAL'?'#b91c1c':'#15803d'}">${viaAdmin}</span></div>
+                    </div>
+
+                    <div class="lbl-box-osm" style="margin-bottom:8px; background-color:#e0f2fe; text-align:center;">
+                        <span style="font-size:7pt; display:block;">VELOCIDAD DE INFUSIÓN (24h)</span>
+                        <span class="lbl-val-bold" style="font-size:11pt;">${velocidadInfusion} ml/h</span>
                     </div>
                     
                     <table class="lbl-data-table">
