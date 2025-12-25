@@ -1400,11 +1400,11 @@
                 },
                 "cloruro_sodico_20": {
                     nombre: "CLORURO DE SODIO B. BRAUN 20%",
-                    concentracion_sodio: 3422, // mEq/L
-                    concentracion_cloro: 3422, // mEq/L
+                    concentracion_sodio: 3400, // mEq/L
+                    concentracion_cloro: 3400, // mEq/L
                     osmolaridad: 6800, // mOsm/L (Aprox 2x3400)
                     codigo_nacional: 492155, 
-                    composicion: "Sodio 3422 mEq/L + Cloro 3422 mEq/L"
+                    composicion: "Sodio 3400 mEq/L + Cloro 3400 mEq/L"
                 },
                 "agua_inyectables_fresenius": {
                     nombre: "API FRESENIUS KABI 500ML",
@@ -1729,64 +1729,128 @@
                 document.getElementById('vol-sodio').value = 0;
             }
 
-            // 4. POTASIO (Balance KCl vs AcetatoK)
-            // Aquí usamos los productos fijos de la DB para el solver
+            // 4. POTASIO Y BALANCE IÓNICO (CON AUTOCORRECCIÓN DE INPUTS)
+            // ----------------------------------------------------------------
             const pKCl = materiasPrimas.electrolitos['cloruro_potasico_braun'];
             const pKAc = materiasPrimas.electrolitos['acetato_potasico_braun']; 
-            // NOTA: Si quisieras usar "Acetato Sódico" como pediste en el prompt, tendrías que haberlo añadido a la DB.
-            // Asumo que te referías a "Acetato Potásico" para el balance de K, que es lo estándar.
 
             let volKCl = 0, volKAc = 0;
-            let clTotal = clFromNa;
+            // clFromNa: Cloro obligatorio que ya viene del NaCl (calculado en paso previo)
+            let clTotal = clFromNa; 
             let acTotal = 0;
 
             if (targetK > 0 && pKCl && pKAc) {
-                // Algoritmo Solver: Intentar satisfacer Cloro primero
+                let k_needed = targetK;
                 let k_as_kcl = 0;
                 let k_as_kac = 0;
-                
-                // Si el usuario edita Acetato manualmente, priorizamos eso
+
+                // --- ESCENARIO 1: EL USUARIO ESCRIBIÓ EN "ACETATO" ---
                 if (sourceTrigger === 'input-acetato') {
                     let desiredAc = targetAcetato;
-                    if (desiredAc > targetK) desiredAc = targetK; // No podemos dar mas acetato que K total
-                    k_as_kac = desiredAc;
-                    k_as_kcl = targetK - desiredAc;
-                } else {
-                    // Default: Priorizar Cloro
-                    let clDeficit = targetCl - clFromNa;
-                    if (clDeficit < 0) clDeficit = 0;
                     
-                    if (clDeficit >= targetK) {
-                        k_as_kcl = targetK; // Todo K como Cloruro
+                    // LÍMITE FÍSICO (Techo): No puedes tener más Acetato que el Potasio total
+                    // Si pides 100 Acetato pero solo hay 60 K, el tope es 60.
+                    if (desiredAc > k_needed) {
+                        desiredAc = k_needed; 
+                    }
+                    
+                    k_as_kac = desiredAc; 
+                    k_as_kcl = k_needed - k_as_kac; 
+                }
+                
+                // --- ESCENARIO 2: EL USUARIO ESCRIBIÓ EN "CLORO" ---
+                else {
+                    // Calculamos el hueco para Cloro (Target - Lo que ya hay de Na)
+                    let cl_deficit = targetCl - clFromNa;
+                    
+                    // LÍMITE FÍSICO (Suelo): Si el NaCl ya aporta 50 Cl y pides 20, 
+                    // físicamente tendrás 50. El déficit no puede ser negativo para el cálculo.
+                    if (cl_deficit < 0) cl_deficit = 0; 
+
+                    if (cl_deficit >= k_needed) {
+                        k_as_kcl = k_needed; // Tope de K usado para Cloro
+                        k_as_kac = 0;
                     } else {
-                        k_as_kcl = clDeficit;
-                        k_as_kac = targetK - clDeficit; // El resto como Acetato
+                        k_as_kcl = cl_deficit;
+                        k_as_kac = k_needed - cl_deficit;
                     }
                 }
 
-                volKCl = calcVol(k_as_kcl, pKCl.concentracion_potasio); // Asegúrate de haber corregido la DB (.concentracion_potasio)
+                // Cálculo de Volúmenes
+                volKCl = calcVol(k_as_kcl, pKCl.concentracion_potasio); 
                 volKAc = calcVol(k_as_kac, pKAc.concentracion_potasio);
 
                 document.getElementById('vol-kcl').value = volKCl.toFixed(1);
                 document.getElementById('vol-k-acetato').value = volKAc.toFixed(1);
 
+                // Totales
                 totalVol += (volKCl + volKAc);
                 totalOsm += volKCl * (pKCl.osmolaridad/1000) + volKAc * (pKAc.osmolaridad/1000);
                 if(volKCl>0) fungibles.push(...getBestSyringe(volKCl));
                 if(volKAc>0) fungibles.push(...getBestSyringe(volKAc));
 
-                clTotal += k_as_kcl; // KCl aporta Cl
-                acTotal += k_as_kac; // KAc aporta Ac
+                clTotal += k_as_kcl; 
+                acTotal += k_as_kac;
             } else {
                 document.getElementById('vol-kcl').value = 0;
                 document.getElementById('vol-k-acetato').value = 0;
             }
 
-            // Actualizar inputs calculados (sin disparar evento recursivo)
+            // ----------------------------------------------------------------
+            // LÓGICA DE AUTOCORRECCIÓN Y FEEDBACK
+            // ----------------------------------------------------------------
             const inpCl = document.getElementById('input-cloro');
             const inpAc = document.getElementById('input-acetato');
-            if (inpCl && sourceTrigger !== 'input-cloro') inpCl.value = clTotal.toFixed(1);
-            if (inpAc && sourceTrigger !== 'input-acetato') inpAc.value = acTotal.toFixed(1);
+            
+            // 1. AUTOCORRECCIÓN DE ACETATO (Si te pasaste del tope)
+            if (inpAc && sourceTrigger === 'input-acetato') {
+                // Si el usuario pidió más de lo que el sistema calculó como posible (acTotal)
+                if (targetAcetato > acTotal + 0.5) { 
+                    inpAc.value = acTotal.toFixed(1); // <-- AQUÍ TE CORRIGE EL NÚMERO
+                    
+                    // Feedback visual: Borde rojo y fondo rojo suave
+                    inpAc.style.borderColor = "#ef4444";
+                    inpAc.style.backgroundColor = "#fee2e2";
+                    inpAc.title = "Corregido al máximo posible por límite de Potasio";
+                } else {
+                    // Si todo está bien, actualizamos el Cloro (efecto balanza)
+                    if(inpCl) {
+                        inpCl.value = clTotal.toFixed(1);
+                        inpCl.style.backgroundColor = "#dcfce7"; // Verde suave
+                        setTimeout(() => inpCl.style.backgroundColor = "#ffffff", 500);
+                    }
+                    inpAc.style.borderColor = "#cbd5e1"; 
+                    inpAc.style.backgroundColor = "#ffffff";
+                }
+            }
+
+            // 2. AUTOCORRECCIÓN DE CLORO (Si te quedaste corto por el mínimo del Na)
+            if (inpCl && sourceTrigger === 'input-cloro') {
+                // Si el usuario pidió MENOS cloro del que obligatoriamente hay (clTotal)
+                if (targetCl < clTotal - 0.5) {
+                    inpCl.value = clTotal.toFixed(1); // <-- AQUÍ TE CORRIGE EL NÚMERO
+                    
+                    // Feedback visual
+                    inpCl.style.borderColor = "#ef4444";
+                    inpCl.style.backgroundColor = "#fee2e2";
+                    inpCl.title = "Corregido al mínimo posible obligado por el Sodio (NaCl)";
+                } else {
+                    // Si todo está bien, actualizamos el Acetato (efecto balanza)
+                    if(inpAc) {
+                        inpAc.value = acTotal.toFixed(1);
+                        inpAc.style.backgroundColor = "#dcfce7";
+                        setTimeout(() => inpAc.style.backgroundColor = "#ffffff", 500);
+                    }
+                    inpCl.style.borderColor = "#cbd5e1";
+                    inpCl.style.backgroundColor = "#ffffff";
+                }
+            }
+            
+            // 3. ACTUALIZACIÓN PASIVA (Si cambian otros valores, ej: Sodio)
+            if (sourceTrigger !== 'input-cloro' && sourceTrigger !== 'input-acetato') {
+                if (inpCl) inpCl.value = clTotal.toFixed(1);
+                if (inpAc) inpAc.value = acTotal.toFixed(1);
+            }
 
 
             // 5. CALCIO
