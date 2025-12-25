@@ -4,7 +4,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Calculadora Nutrición Parenteral Hospitalaria</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
@@ -13,15 +12,36 @@
         @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .criterion-check:checked + div { background-color: #fff7ed; border-color: #f97316; color: #c2410c; }
         
-        /* Tab Styles Redesigned */
+        /* Tab Styles Redesigned - CSS Nativo */
         .tab-btn { 
-            @apply px-6 py-3 font-bold text-sm rounded-xl transition-all duration-200 flex items-center justify-center gap-2; 
+            padding: 12px 24px;
+            font-weight: 700;
+            font-size: 0.875rem; /* text-sm */
+            border-radius: 0.75rem; /* rounded-xl */
+            transition: all 200ms;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            cursor: pointer;
         }
+        
         .tab-btn.active { 
-            @apply bg-slate-50 text-blue-700 shadow-md transform scale-105; 
+            background-color: #f8fafc; /* bg-slate-50 */
+            color: #1d4ed8; /* text-blue-700 */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); /* shadow-md */
+            transform: scale(1.05);
         }
+        
         .tab-btn.inactive { 
-            @apply text-blue-100 hover:bg-white/10 hover:text-white border border-transparent; 
+            color: #dbeafe; /* text-blue-100 */
+            border: 1px solid transparent;
+            background-color: transparent;
+        }
+
+        .tab-btn.inactive:hover {
+            background-color: rgba(255, 255, 255, 0.1); /* hover:bg-white/10 */
+            color: white;
         }
 
         /* =========================================================
@@ -223,6 +243,10 @@
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
                     <h2 class="text-lg font-semibold mb-4 text-blue-800 border-b pb-2"><i class="fa-solid fa-user-injured mr-2"></i>Datos del Paciente</h2>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-medium text-slate-600 mb-1">Nombre Completo del Paciente</label>
+                            <input type="text" id="nombre-paciente" class="w-full border-slate-300 rounded-md shadow-sm p-2 border focus:ring-blue-500 focus:border-blue-500 font-bold text-slate-800" placeholder="Nombre y Apellidos">
+                        </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-600 mb-1">NHC</label>
                             <input type="text" id="nhc" class="w-full border-slate-300 rounded-md shadow-sm p-2 border focus:ring-blue-500 focus:border-blue-500" placeholder="Hist. Clínica">
@@ -303,25 +327,53 @@
                             </div>
                         </div>
                     </div>
+
+                    <div id="refeeding-options" class="hidden mt-4 pt-4 border-t border-orange-200">
+                    <div class="flex flex-row flex-nowrap items-center gap-3">
+                        <div class="flex-shrink-0 text-orange-800 font-bold text-sm whitespace-nowrap">
+                            <i class="fa-solid fa-calendar-days mr-2"></i>Fase de Realimentación:
+                        </div>
+                        
+                        <select id="refeeding-phase" class="flex-grow w-full min-w-0 border-orange-300 rounded-md text-sm p-2 bg-white text-orange-900 font-medium focus:ring-orange-500 focus:border-orange-500 shadow-sm" onchange="calcular()">
+                            <option value="0.25">Días 1 - 4: 25% del GET</option>
+                            <option value="0.60">Días 5 - 7: 60% del GET</option>
+                            <option value="1.0">Día 8 en adelante: 100% del GET</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mt-2 text-[10px] text-orange-700 bg-orange-100 p-2 rounded border border-orange-200">
+                        <i class="fa-solid fa-lock mr-1"></i> <strong>Protocolo de Seguridad Activado:</strong> Reparto fijo 50% HC / 30% Lípidos / 20% Proteínas sobre las calorías ajustadas.
+                    </div>
                 </div>
+
+            </div>
 
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
                     <h2 class="text-lg font-semibold mb-4 text-blue-800 border-b pb-2"><i class="fa-solid fa-hospital mr-2"></i>Ubicación y Protocolo</h2>
                     
-                    <div class="flex space-x-4 mb-4">
-                        <button onclick="setMode('uci')" id="btn-uci" class="flex-1 py-2 rounded-lg font-medium border-2 border-blue-600 bg-blue-600 text-white transition">UCI / Críticos</button>
-                        <button onclick="setMode('planta')" id="btn-planta" class="flex-1 py-2 rounded-lg font-medium border-2 border-slate-200 text-slate-600 hover:border-blue-400 transition">Planta / No UCI</button>
+                    <div class="flex space-x-2 md:space-x-4 mb-4">
+                        <button onclick="setMode('uci')" id="btn-uci" class="flex-1 py-2 rounded-lg font-medium border-2 border-blue-600 bg-blue-600 text-white transition text-xs md:text-sm">UCI / Críticos</button>
+                        <button onclick="setMode('planta')" id="btn-planta" class="flex-1 py-2 rounded-lg font-medium border-2 border-slate-200 text-slate-600 hover:border-blue-400 transition text-xs md:text-sm">Planta</button>
+                        <button onclick="setMode('personalizado')" id="btn-personalizado" class="flex-1 py-2 rounded-lg font-medium border-2 border-slate-200 text-slate-600 hover:border-purple-400 transition text-xs md:text-sm"><i class="fa-solid fa-pen-to-square mr-1"></i>Personalizado</button>
                     </div>
 
                     <div id="uci-fields" class="space-y-4">
                         <div>
                             <label class="block text-sm font-medium text-slate-600 mb-1">Tipo de Paciente UCI</label>
-                            <select id="uci-tipo" class="w-full border-slate-300 rounded-md shadow-sm p-2 border">
+                            
+                            <select id="uci-tipo" class="w-full border-slate-300 rounded-md shadow-sm p-2 border" onchange="handleUciTypeChange()">
                                 <option value="normal">UCI Normal</option>
                                 <option value="sepsis">Sepsis</option>
                                 <option value="hepatico">Insuficiencia Hepática Grave</option>
                                 <option value="fistula">Fístula Alto Débito / Abd. Abierto</option>
                             </select>
+
+                            <div id="ascites-container" class="hidden mt-2 p-2 bg-orange-50 border border-orange-200 rounded animate-fade-in">
+                                <label class="flex items-center cursor-pointer">
+                                    <input type="checkbox" id="has-ascites" class="w-4 h-4 text-orange-600 rounded focus:ring-orange-500 border-gray-300" onchange="calcular()">
+                                    <span class="ml-2 text-xs font-bold text-orange-800">¿Paciente con Ascitis? (Usar Peso Ideal)</span>
+                                </label>
+                            </div>
                         </div>
                         <div class="grid grid-cols-2 gap-4">
                             <div>
@@ -373,15 +425,45 @@
                         </div>
                     </div>
 
+                    <div id="personalizado-fields" class="hidden space-y-4 bg-purple-50 p-4 rounded-xl border border-purple-100">
+                        <h4 class="text-sm font-bold text-purple-800 mb-2">Prescripción Manual de Macronutrientes</h4>
+                        <div class="grid grid-cols-1 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">Proteínas Totales (g/día)</label>
+                                <div class="flex items-center">
+                                    <input type="number" id="custom-prot" class="w-full border-purple-300 rounded-md shadow-sm p-2 border focus:ring-purple-500 focus:border-purple-500 font-bold text-slate-700" placeholder="Ej. 80">
+                                    <span class="ml-2 text-xs text-slate-500">g</span>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">Hidratos de Carbono (g/día)</label>
+                                <div class="flex items-center">
+                                    <input type="number" id="custom-hc" class="w-full border-purple-300 rounded-md shadow-sm p-2 border focus:ring-purple-500 focus:border-purple-500 font-bold text-slate-700" placeholder="Ej. 150">
+                                    <span class="ml-2 text-xs text-slate-500">g</span>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">Lípidos (g/día)</label>
+                                <div class="flex items-center">
+                                    <input type="number" id="custom-lip" class="w-full border-purple-300 rounded-md shadow-sm p-2 border focus:ring-purple-500 focus:border-purple-500 font-bold text-slate-700" placeholder="Ej. 60">
+                                    <span class="ml-2 text-xs text-slate-500">g</span>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="text-[10px] text-purple-600 mt-2 italic">
+                            * Introduce la cantidad total deseada para el paciente. El sistema calculará automáticamente las calorías, nitrógeno y osmolaridad, restando propofol/citrato si se indicaron.
+                        </p>
+                    </div>
+
                     <div class="mt-6 pt-4 border-t">
                         <label class="block text-sm font-bold text-slate-700 mb-2">
-                            <i class="fa-solid fa-chart-pie mr-2 text-blue-500"></i>Relación HC / Lípidos (No proteica)
+                            <i class="fa-solid fa-chart-pie mr-2 text-blue-500"></i>Relación HC / Lípidos (Kcal no proteicas)
                         </label>
                         <select id="ratio-hc-lip" class="w-full border-slate-300 rounded-md shadow-sm p-2 border focus:ring-blue-500 focus:border-blue-500 bg-yellow-50/50">
-                            <option value="70">70% HC / 30% Lípidos (Ahorro de Lípidos)</option>
-                            <option value="60" selected>60% HC / 40% Lípidos (Estándar)</option>
-                            <option value="50">50% HC / 50% Lípidos (Diabetes / Hiperglucemia)</option>
-                            <option value="40">40% HC / 60% Lípidos (Insuf. Respiratoria)</option>
+                            <option value="70">70% HC / 30% Lípidos</option>
+                            <option value="60" selected>60% HC / 40% Lípidos</option>
+                            <option value="50">50% HC / 50% Lípidos</option>
+                            <option value="40">40% HC / 60% Lípidos</option>
                         </select>
                     </div>
 
@@ -436,12 +518,20 @@
 
                     <div class="bg-white rounded-xl shadow-md overflow-hidden border border-slate-200">
                         <div class="bg-slate-800 text-white px-6 py-3 flex justify-between items-center">
-                            <h3 class="font-bold">Prescripción de Macronutrientes</h3>
+                        <h3 class="font-bold">Prescripción de Macronutrientes</h3>
+                        
+                        <div class="flex items-center gap-6">
+                            <div id="geb-guide-container" class="hidden text-right border-r border-blue-600 pr-6">
+                                 <div class="text-[10px] text-blue-300 font-medium uppercase tracking-wider">GEB (Harris-B.)</div>
+                                 <div class="text-lg font-bold text-yellow-400 leading-none"><span id="val-geb-guide">0</span> <span class="text-xs font-normal">kcal</span></div>
+                            </div>
+    
                             <div class="text-right">
-                                <span id="total-kcal" class="bg-blue-500 px-3 py-1 rounded text-sm font-bold block">0 kcal/día</span>
+                                <span id="total-kcal" class="bg-blue-500 px-3 py-1 rounded text-sm font-bold block transition-all">0 kcal/día</span>
                                 <span id="kcal-type-label" class="text-[10px] text-blue-200 uppercase font-bold">Total</span>
                             </div>
                         </div>
+                    </div>
                         
                         <div class="p-6 grid gap-6">
                             <div class="flex items-center justify-between border-b pb-4">
@@ -453,10 +543,21 @@
                                     </div>
                                 </div>
                                 <div class="text-right">
-                                    <div class="text-2xl font-bold text-slate-800"><span id="val-prot">0</span> g</div>
-                                    <div class="text-xs text-slate-500"><span id="kcal-prot">0</span> kcal | <span id="val-n2">0</span> g N2</div>
+                                    <div class="text-2xl font-bold text-slate-800 flex justify-end items-center gap-2">
+                                        <span id="val-prot" class="mode-auto">0</span> 
+                                        <input type="number" id="man-prot" class="mode-manual hidden w-24 text-right border-red-300 focus:ring-red-500 rounded-md border p-1 text-lg" placeholder="0" oninput="updateManualLive()">
+                                        <span class="text-sm font-normal text-slate-600">g aa</span>
+                                        
+                                        <span class="text-slate-300 mx-1">/</span>
+                                        <span id="val-n2">0</span>
+                                        <span class="text-sm font-normal text-slate-600">g N</span>
+                                    </div>
+                                    
+                                    <div class="text-xs text-slate-500"><span id="kcal-prot">0</span> kcal</div>
+                                    <div class="text-[10px] text-blue-600 font-bold mt-1">Kcal No Proteicas / g N: <span id="calc-ratio-npcn">0</span></div>
                                 </div>
                             </div>
+                            
                             <div class="flex items-center justify-between border-b pb-4">
                                 <div class="flex items-center">
                                     <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 mr-4"><i class="fa-solid fa-bread-slice"></i></div>
@@ -466,11 +567,16 @@
                                     </div>
                                 </div>
                                 <div class="text-right">
-                                    <div class="text-2xl font-bold text-slate-800"><span id="val-hc">0</span> g</div>
+                                    <div class="text-2xl font-bold text-slate-800 flex justify-end items-center gap-2">
+                                        <span id="val-hc" class="mode-auto">0</span>
+                                        <input type="number" id="man-hc" class="mode-manual hidden w-24 text-right border-blue-300 focus:ring-blue-500 rounded-md border p-1 text-lg" placeholder="0" oninput="updateManualLive()">
+                                        <span class="text-sm font-normal text-slate-600">g</span>
+                                    </div>
                                     <div class="text-xs text-slate-500"><span id="kcal-hc">0</span> kcal</div>
                                     <div id="citrato-warning" class="text-[10px] text-orange-600 hidden font-bold">Ajustado por Citrato (-<span id="val-citrato-kcal">0</span> kcal)</div>
                                 </div>
                             </div>
+
                             <div class="flex items-center justify-between">
                                 <div class="flex items-center">
                                     <div class="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-600 mr-4"><i class="fa-solid fa-oil-can"></i></div>
@@ -480,8 +586,12 @@
                                     </div>
                                 </div>
                                 <div class="text-right">
-                                    <div class="text-2xl font-bold text-slate-800"><span id="val-lip">0</span> g</div>
-                                    <div class="text-xs text-slate-500"><span id="kcal-lip">0</span> kcal (Bolsa)</div>
+                                    <div class="text-2xl font-bold text-slate-800 flex justify-end items-center gap-2">
+                                        <span id="val-lip" class="mode-auto">0</span>
+                                        <input type="number" id="man-lip" class="mode-manual hidden w-24 text-right border-yellow-300 focus:ring-yellow-500 rounded-md border p-1 text-lg" placeholder="0" oninput="updateManualLive()">
+                                        <span class="text-sm font-normal text-slate-600">g</span>
+                                    </div>
+                                    <div class="text-xs text-slate-500"><span id="kcal-lip">0</span> kcal </div>
                                     <div id="propofol-warning" class="text-[10px] text-orange-600 hidden font-bold">Ajustado por Propofol (-<span id="val-propofol-lip">0</span>g)</div>
                                 </div>
                             </div>
@@ -491,19 +601,18 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
                             <h4 class="font-bold text-slate-700 mb-3 border-b pb-2">Electrolitos (Rango Total)</h4>
-                            <ul class="space-y-2 text-sm" id="electro-list">
-                                </ul>
+                            <ul class="space-y-2 text-sm" id="electro-list"></ul>
                         </div>
                         <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
                             <h4 class="font-bold text-slate-700 mb-3 border-b pb-2">Aditivos Diarios</h4>
                             <ul class="space-y-3 text-sm text-slate-600">
                                 <li class="flex flex-col border-b border-slate-50 pb-2">
-                                    <span class="font-bold text-slate-700">Multivitamínicos (Soluvit + Vitalipid)</span>
-                                    <span class="text-xs text-slate-500 mt-1 pl-2 border-l-2 border-slate-200">1 ampolla de cada (10ml c/u)</span>
+                                    <span class="font-bold text-slate-700">Multivitamínicos</span>
+                                    <span class="text-xs text-slate-500 mt-1 pl-2 border-l-2 border-slate-200">1 ampolla Soluvit + Vitalipid</span>
                                 </li>
                                 <li class="flex flex-col border-b border-slate-50 pb-2">
-                                    <span class="font-bold text-slate-700">Oligoelementos (Oligostandard)</span>
-                                    <span class="text-xs text-slate-500 mt-1 pl-2 border-l-2 border-slate-200">1 ampolla (10ml)</span>
+                                    <span class="font-bold text-slate-700">Oligoelementos</span>
+                                    <span class="text-xs text-slate-500 mt-1 pl-2 border-l-2 border-slate-200">1 ampolla Oligostandard</span>
                                 </li>
                                 <li class="flex flex-col border-b border-slate-50 pb-2">
                                     <span class="font-bold text-slate-700">Tiamina</span>
@@ -524,7 +633,7 @@
                                 Sugerido: <span id="val-volumen-sugerido" class="font-bold">--</span> ml
                             </div>
                             <div class="flex items-center gap-2 mt-1">
-                                <input type="number" id="volumen-administrar" class="w-32 text-center text-xl font-bold text-blue-700 border-2 border-blue-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white" placeholder="0" onchange="calculateCompounding()">
+                                <input type="number" id="volumen-administrar" class="w-32 text-center text-xl font-bold text-blue-700 border-2 border-blue-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 bg-white" placeholder="0" onchange="calculateCompounding()">
                                 <span class="text-sm font-bold text-blue-600">ml</span>
                             </div>
                         </div>
@@ -553,10 +662,13 @@
                         <div class="mb-8">
                             <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200 pb-2 mb-4">1. Macronutrientes</h3>
                             <div class="grid grid-cols-3 gap-4 text-center">
-                                <div class="bg-red-50 p-4 rounded-lg border border-red-100">
-                                    <div class="text-red-600 font-bold mb-1">Proteínas</div>
-                                    <div class="text-2xl font-bold text-slate-800" id="elab-prot">0</div>
-                                    <div class="text-xs text-slate-500">gramos</div>
+                                <div class="bg-red-50 p-4 rounded-lg border border-red-100 flex flex-col justify-center items-center">
+                                    <div class="text-red-600 font-bold mb-1">Proteínas / Nitrógeno</div>
+                                    <div class="text-xl font-bold text-slate-800 text-center" id="elab-prot">0</div>
+                                    <div class="mt-2 text-xs text-slate-500 text-center border-t border-red-100 pt-1 w-full">
+                                        <div class="font-semibold"><span id="elab-kcal-prot">0</span> kcal</div>
+                                        <div class="text-[10px] text-slate-600 mt-1" title="Kcal No Proteicas / g N">Kcal No Proteicas / g N: <span id="elab-ratio-npcn" class="font-bold text-red-700">0</span></div>
+                                    </div>
                                 </div>
                                 <div class="bg-blue-50 p-4 rounded-lg border border-blue-100">
                                     <div class="text-blue-600 font-bold mb-1">H. Carbono</div>
@@ -859,7 +971,7 @@
                                     </div>
                                     <div class="md:col-span-4">
                                         <label class="block text-xs font-medium text-slate-500 mb-1">Volumen (ml)</label>
-                                        <input type="number" id="vol-vit-4" class="w-full border-slate-300 rounded-lg shadow-sm p-2.5 border bg-white text-sm" placeholder="0">
+                                        <input type="number" id="vol-vit-4" oninput="calculateCompounding()" class="w-20 border-slate-300 rounded-md text-sm p-1 text-right" placeholder="ml">
                                     </div>
                                 </div>
                             </div>
@@ -913,8 +1025,16 @@
 
                     <div class="mt-8 border-t pt-6">
                         <h4 class="font-bold text-slate-800 mb-4">Referencias Específicas Utilizadas</h4>
-                        <ul class="list-disc list-inside text-sm text-slate-600 space-y-2">
-                            <li>ESPEN practical and partially revised guideline: Clinical nutrition in the intensive care unit. <a href="https://doi.org/10.1016/j.clnu.2023.07.011" target="_blank" class="text-blue-600 hover:underline">https://doi.org/10.1016/j.clnu.2023.07.011</a></li>
+                       <ul class="list-disc list-inside text-sm text-slate-600 space-y-2 text-justify">
+                            <li>
+                                Gomis Muñoz P, et al. Consenso Español sobre Preparación de Mezclas Nutrientes Parenterales 2008. 
+                                <a href="https://senpe.com/wp-content/uploads/2022/09/ConsensoPreparacion2008.pdf" target="_blank" class="text-blue-600 hover:underline font-bold">
+                                    [Acceder al Documento]
+                                </a>
+                            </li>
+                            <li>Singer P, Blaser AR, Berger MM, et al. ESPEN practical and partially revised guideline: Clinical nutrition in the intensive care unit. Clin Nutr. 2023;42:1671-1689. <a href="https://doi.org/10.1016/j.clnu.2023.07.011" target="_blank" class="text-blue-600 hover:underline">https://doi.org/10.1016/j.clnu.2023.07.011</a></li>
+                            <li>Bischoff SC, Bernal W, Dasarathy S, et al. ESPEN practical guideline: Clinical nutrition in liver disease. Clin Nutr. 2020;39:3533-3562. <a href="https://doi.org/10.1016/j.clnu.2020.09.001" target="_blank" class="text-blue-600 hover:underline">https://doi.org/10.1016/j.clnu.2020.09.001</a></li>
+                            <li>Thibault R, Abbasoglu O, Ioannou E, Meija L, Ottens-Oussoren K, Pichard C, et al. ESPEN guideline on hospital nutrition. Clin Nutr. 2021;40:5684-5709. <a href="https://doi.org/10.1016/j.clnu.2021.09.039" target="_blank" class="text-blue-600 hover:underline">https://doi.org/10.1016/j.clnu.2021.09.039</a></li>
                             <li>Fichas técnicas de productos comerciales (B. Braun, Fresenius Kabi).</li>
                             <li>Olveira Fuster G, editor. Manual de nutrición clínica y dietética. 4.ª ed. Madrid: Díaz de Santos; 2023.</li>
                         </ul>
@@ -1021,6 +1141,10 @@
             <h3 class="font-bold text-lg mb-3 text-blue-800">1. Datos del Paciente y Evaluación</h3>
             <div class="print-grid">
                 <div class="grid grid-cols-2 gap-y-2 gap-x-4">
+                    <div style="grid-column: span 2;">
+                        <div class="info-label">Paciente</div>
+                        <div id="p-nombre" class="info-value" style="font-size: 14pt; color: #1e3a8a;">--</div>
+                    </div>
                     <div><div class="info-label">NHC</div><div id="p-nhc" class="info-value">--</div></div>
                     <div><div class="info-label">Cama</div><div id="p-cama" class="info-value">--</div></div>
                     <div><div class="info-label">Edad / Sexo</div><div id="p-edad-sexo" class="info-value">--</div></div>
@@ -1059,6 +1183,9 @@
                         <td class="text-right font-bold" id="p-kcal-total">--</td>
                         <td class="text-right text-gray-500">--</td>
                         <td class="text-right text-xs" id="p-kcal-nota"></td>
+                    <tr>
+                        <td>Kcal no prot. / g de N</td>
+                        <td class="text-right font-bold" id="p-ratio-val">--</td>
                     </tr>
                     <tr>
                         <td>Proteínas</td>
@@ -1084,7 +1211,6 @@
 
         <div class="print-section">
             <h3 class="font-bold text-lg mb-3 text-blue-800">3. Ficha de Elaboración (Mezcla)</h3>
-            <p class="text-xs text-gray-500 mb-2">Orden de adición sugerido: Aminoácidos > Electrolitos > Glucosa > Lípidos > Vitaminas.</p>
             
             <table class="print-table">
                 <thead>
@@ -1241,7 +1367,8 @@
                     nombre: "BENERVA 100 MG/ML",
                     concentracion_mg: 100, // mg/mL
                     volumen_envase: 1, // mL
-                    es_variable: true // Volume depends on calculated dose
+                    es_variable: true, // Volume depends on calculated dose
+                    codigo_nacional: 654790
                 }
             },
             electrolitos: {
@@ -1273,7 +1400,7 @@
                     nombre: "CLORURO DE SODIO B. BRAUN 20%",
                     concentracion_sodio: 3422, // mEq/L
                     concentracion_cloro: 3422, // mEq/L
-                    osmolaridad: 6800, // mOsm/L (Aprox 2x3422)
+                    osmolaridad: 6800, // mOsm/L (Aprox 2x3400)
                     codigo_nacional: 492155, 
                     composicion: "Sodio 3422 mEq/L + Cloro 3422 mEq/L"
                 },
@@ -1305,15 +1432,16 @@
             },
             bolsas: {
                 "bolsa_1l": {
-                    nombre: "Bolsa EVA 1 Litro",
+                    nombre: "Bolsa MULTICAPA 1 Litro",
                     capacidad_ml: 1000
                 },
                 "bolsa_3l": {
-                    nombre: "Bolsa EVA 3 Litros",
+                    nombre: "Bolsa MULTICAPA 3 Litros",
                     capacidad_ml: 3000
                 }
             },
             fungibles: {
+                "jeringa_5": { nombre: "Jeringa 5 mL" }, 
                 "jeringa_10": { nombre: "Jeringa 10 mL" },
                 "jeringa_20": { nombre: "Jeringa 20 mL" },
                 "jeringa_30": { nombre: "Jeringa 30 mL" },
@@ -1352,7 +1480,6 @@
             magnesio_max: 15,     // mEq/L
             cloro_max: 180,       // mEq/L
             acetato_max: 85,      // mEq/L
-            ca_p_suma_max: 30,    // Regla compleja: Calcio (mEq/L) + Fosfato (mmol/L) <= 30
 
             // Macronutrientes (Concentración final en la mezcla %)
             // Aminoácidos: 2-5%
@@ -1458,6 +1585,8 @@
         function getBestSyringe(vol) {
             if (vol <= 0) return [];
             
+            // Lógica más precisa para volúmenes pequeños
+            if (vol <= 5) return ["Jeringa 5 mL"];
             if (vol <= 10) return ["Jeringa 10 mL"];
             if (vol <= 20) return ["Jeringa 20 mL"];
             if (vol <= 30) return ["Jeringa 30 mL"];
@@ -1530,7 +1659,20 @@
             let naFromLip = 0;
             const pLip = getProd('sel-lip', 'lipidos');
             if (pLip) {
-                const vol = calcVol(targetLip, pLip.concentracion_lip);
+                let vol = 0;
+                
+                // --- LÓGICA MODIFICADA: CÁLCULO POR OBJETIVO CALÓRICO ---
+                // Si la botella define sus Kcal/L, usamos eso para calcular el volumen
+                // Objetivo: Que el volumen aporte las (Gramos * 9) kcal diseñadas.
+                if (pLip.kcal_l && pLip.kcal_l > 0) {
+                    const targetKcal = targetLip * 9; // Kcal diseñadas (Factor 9)
+                    // Fórmula: (Kcal_Objetivo * 1000) / Kcal_Botella_Litro
+                    vol = (targetKcal * 1000) / pLip.kcal_l;
+                } else {
+                    // Fallback: Si el producto no tiene kcal_l definidas, calculamos por gramos
+                    vol = calcVol(targetLip, pLip.concentracion_lip);
+                }
+                
                 document.getElementById('vol-lip').value = vol.toFixed(1);
                 totalVol += vol;
                 totalOsm += vol * (pLip.osmolaridad/1000);
@@ -1677,6 +1819,100 @@
                 fungibles.push(...getBestSyringe(volTiamina));
             }
 
+            // ============================================================
+            // VALIDACIÓN COMPLETA DE ESTABILIDAD (RANGOS MIN Y MAX)
+            // ============================================================
+            
+            // Usamos el volumen final real para calcular porcentajes exactos
+            const volFinalReal = targetVolAdmin > 0 ? targetVolAdmin : totalVol;
+
+            if (volFinalReal > 0) {
+                // 1. Calcular Porcentajes Finales (p/v)
+                const pctAA = (targetProt / volFinalReal) * 100;
+                const pctGlu = (targetHC / volFinalReal) * 100;
+                const pctLip = (targetLip / volFinalReal) * 100;
+
+                // --- A. PROTEÍNAS (AMINOÁCIDOS) ---
+                if (targetProt > 0) {
+                    // Por Defecto (Mínimo)
+                    if (pctAA < limitesSeguridad.aa_conc_min) {
+                         warnings.push(`⚠️ AMINOÁCIDOS BAJOS: ${pctAA.toFixed(1)}%. <br><span class="text-xs font-normal">Mínimo recomendado: ${limitesSeguridad.aa_conc_min}%. Riesgo de inestabilidad de la emulsión.</span>`);
+                    }
+                    // Por Exceso (Máximo)
+                    if (pctAA > limitesSeguridad.aa_conc_max) {
+                         warnings.push(`⚠️ AMINOÁCIDOS ALTOS: ${pctAA.toFixed(1)}%. <br><span class="text-xs font-normal">Máximo recomendado: ${limitesSeguridad.aa_conc_max}%. Riesgo de inestabilidad de la emulsión.</span>`);
+                    }
+                }
+
+                // --- B. HIDRATOS DE CARBONO (GLUCOSA) ---
+                if (targetHC > 0) {
+                    // Por Defecto (Mínimo)
+                    if (pctGlu < limitesSeguridad.glu_conc_min) {
+                        warnings.push(`⚠️ GLUCOSA BAJA: ${pctGlu.toFixed(1)}%. <br><span class="text-xs font-normal">Mínimo recomendado: ${limitesSeguridad.glu_conc_min}%. Riesgo de inestabilidad de la emulsión.</span>`);
+                    }
+                    // Por Exceso (Máximo)
+                    if (pctGlu > limitesSeguridad.glu_conc_max) {
+                        warnings.push(`⚠️ GLUCOSA ALTA: ${pctGlu.toFixed(1)}%. <br><span class="text-xs font-normal">Máximo recomendado: ${limitesSeguridad.glu_conc_max}%. Riesgo de inestabilidad de la emulsión.</span>`);
+                    }
+                }
+
+                // --- C. LÍPIDOS ---
+                if (targetLip > 0) {
+                    // Por Defecto (Mínimo)
+                    if (pctLip < limitesSeguridad.lip_conc_min) {
+                        warnings.push(`⚠️ DILUCIÓN LÍPIDOS: ${pctLip.toFixed(1)}%. <br><span class="text-xs font-normal">Mínimo recomendado: ${limitesSeguridad.lip_conc_min}%. Riesgo de inestabilidad de la emulsión por alta dilución.</span>`);
+                    }
+                    // Por Exceso (Máximo)
+                    if (pctLip > limitesSeguridad.lip_conc_max) {
+                        warnings.push(`⚠️ LÍPIDOS ALTOS: ${pctLip.toFixed(1)}%. <br><span class="text-xs font-normal">Máximo recomendado: ${limitesSeguridad.lip_conc_max}%. Riesgo de inestabilidad de la emulsión.</span>`);
+                    }
+                }
+
+                // ============================================================
+                //  NUEVO: VALIDACIÓN DE ELECTROLITOS (Max mEq/L)
+                // ============================================================
+                
+                // 1. SODIO
+                if (targetNa > 0) {
+                    const concNa = (targetNa / volFinalReal) * 1000;
+                    if (concNa > limitesSeguridad.sodio_max) {
+                        warnings.push(`⚠️ ALERTA SODIO: ${concNa.toFixed(0)} mEq/L. <br><span class="text-xs font-normal">Excede límite (${limitesSeguridad.sodio_max} mEq/L).</span>`);
+                    }
+                }
+
+                // 2. POTASIO
+                if (targetK > 0) {
+                    const concK = (targetK / volFinalReal) * 1000;
+                    if (concK > limitesSeguridad.potasio_max) {
+                        warnings.push(`⚠️ ALERTA POTASIO: ${concK.toFixed(0)} mEq/L. <br><span class="text-xs font-normal">Excede límite (${limitesSeguridad.potasio_max} mEq/L). Alto riesgo cardíaco.</span>`);
+                    }
+                }
+
+                // 3. MAGNESIO
+                if (targetMg > 0) {
+                    const concMg = (targetMg / volFinalReal) * 1000;
+                    if (concMg > limitesSeguridad.magnesio_max) {
+                        warnings.push(`⚠️ ALERTA MAGNESIO: ${concMg.toFixed(1)} mEq/L. <br><span class="text-xs font-normal">Excede límite (${limitesSeguridad.magnesio_max} mEq/L).</span>`);
+                    }
+                }
+
+                // 4. CLORO (Usamos clTotal calculado por el solver)
+                if (clTotal > 0) {
+                    const concCl = (clTotal / volFinalReal) * 1000;
+                    if (concCl > limitesSeguridad.cloro_max) {
+                        warnings.push(`⚠️ ALERTA CLORO: ${concCl.toFixed(0)} mEq/L. <br><span class="text-xs font-normal">Excede límite (${limitesSeguridad.cloro_max} mEq/L). Riesgo acidosis.</span>`);
+                    }
+                }
+
+                // 5. ACETATO (Usamos acTotal calculado por el solver)
+                if (acTotal > 0) {
+                    const concAc = (acTotal / volFinalReal) * 1000;
+                    if (concAc > limitesSeguridad.acetato_max) {
+                        warnings.push(`⚠️ ALERTA ACETATO: ${concAc.toFixed(0)} mEq/L. <br><span class="text-xs font-normal">Excede límite (${limitesSeguridad.acetato_max} mEq/L).</span>`);
+                    }
+                }
+
+            }
 
             // --- RESULTADOS FINALES ---
             // API (Agua)
@@ -1729,8 +1965,8 @@
             }
 
             // Bolsa y Fungibles
-            let bag = "Bolsa EVA 3 Litros"; // Default safety
-            if (totalVol <= 1000) bag = "Bolsa EVA 1 Litro";
+            let bag = "Bolsa MULTICAPA 3 Litros"; // Default safety
+            if (totalVol <= 1000) bag = "Bolsa MULTICAPA 1 Litro";
             else if (totalVol > 3000) bag = "Excede 3L (Revisar)";
             document.getElementById('res-bolsa').value = bag;
 
@@ -1739,7 +1975,7 @@
             if(document.getElementById('res-fungibles')) document.getElementById('res-fungibles').innerHTML = fHtml || "--";
         }
 
-       // Call init on load
+        // Call init on load
         window.addEventListener('DOMContentLoaded', () => {
             loadDatabase(); // CARGAR DB PRIMERO (Esto llamará a initRawMaterials internamente)
         });
@@ -1813,7 +2049,8 @@
         function updateElaborationView() {
             // Check if calculation has been done (simple check on protein value)
             const protVal = document.getElementById('val-prot').innerText;
-            if (protVal === '0') {
+            
+            if (protVal === '0' || protVal === '0.0') {
                 document.getElementById('elaboracion-empty').classList.remove('hidden');
                 document.getElementById('elaboracion-content').classList.add('hidden');
                 return;
@@ -1822,8 +2059,32 @@
             document.getElementById('elaboracion-empty').classList.add('hidden');
             document.getElementById('elaboracion-content').classList.remove('hidden');
 
-            // 1. Macros
-            document.getElementById('elab-prot').innerText = document.getElementById('val-prot').innerText;
+            // 1. Macros - Visualización combinada AA / N
+            const n2Val = document.getElementById('val-n2').innerText;
+            
+            // Texto principal combinando Gramos AA y Nitrógeno
+            document.getElementById('elab-prot').innerHTML = 
+                `${protVal} <span class="text-sm text-slate-600 font-normal">g aa</span> / ${n2Val} <span class="text-sm text-slate-600 font-normal">g N</span>`;
+
+            // --- NUEVO CÁLCULO: Kcal y Ratio NPC/N ---
+            const kcalProt = document.getElementById('kcal-prot').innerText;
+            // Leemos valores numéricos asegurando que no sean NaN
+            const kcalHC = parseFloat(document.getElementById('kcal-hc').innerText) || 0;
+            const kcalLip = parseFloat(document.getElementById('kcal-lip').innerText) || 0;
+            const gN = parseFloat(n2Val) || 0;
+
+            // NPC = Non-Protein Calories (HC + Lípidos)
+            // Nota: Si hay propofol o citrato, ya están descontados/ajustados en los gramos, 
+            // pero aquí sumamos las kcal totales que aportan energía no proteica.
+            const npc = kcalHC + kcalLip;
+            
+            // Ratio = NPC / Gramos de Nitrógeno
+            const ratio = gN > 0 ? (npc / gN) : 0;
+
+            document.getElementById('elab-kcal-prot').innerText = kcalProt;
+            document.getElementById('elab-ratio-npcn').innerText = ratio.toFixed(0);
+            // ------------------------------------------
+
             document.getElementById('elab-hc').innerText = document.getElementById('val-hc').innerText;
             document.getElementById('elab-lip').innerText = document.getElementById('val-lip').innerText;
 
@@ -1831,7 +2092,6 @@
             const elabList = document.getElementById('elab-electro-list');
             elabList.innerHTML = '';
             
-            // Select all electrolyte list items from the calculator view
             const electroItems = document.querySelectorAll('#electro-list li');
             
             electroItems.forEach(item => {
@@ -1839,7 +2099,6 @@
                 const inputVal = item.querySelector('input').value;
                 const unit = item.querySelector('.text-xs.text-slate-500').innerText;
                 
-                // If user entered a value, show it. Otherwise show "Pendiente"
                 const displayVal = inputVal ? `<strong>${inputVal}</strong> ${unit}` : '<span class="text-slate-400 italic">No especificado</span>';
                 
                 elabList.innerHTML += `
@@ -1870,20 +2129,49 @@
 
         function setMode(newMode) {
             mode = newMode;
-            document.getElementById('btn-uci').className = mode === 'uci' 
-                ? "flex-1 py-2 rounded-lg font-medium border-2 border-blue-600 bg-blue-600 text-white transition"
-                : "flex-1 py-2 rounded-lg font-medium border-2 border-slate-200 text-slate-600 hover:border-blue-400 transition";
             
-            document.getElementById('btn-planta').className = mode === 'planta'
-                ? "flex-1 py-2 rounded-lg font-medium border-2 border-orange-500 bg-orange-500 text-white transition"
-                : "flex-1 py-2 rounded-lg font-medium border-2 border-slate-200 text-slate-600 hover:border-orange-400 transition";
+            const btnInactive = "flex-1 py-2 rounded-lg font-medium border-2 border-slate-200 text-slate-600 hover:border-blue-400 transition text-xs md:text-sm";
+            const btnActiveBlue = "flex-1 py-2 rounded-lg font-medium border-2 border-blue-600 bg-blue-600 text-white transition text-xs md:text-sm";
+            const btnActiveOrange = "flex-1 py-2 rounded-lg font-medium border-2 border-orange-500 bg-orange-500 text-white transition text-xs md:text-sm";
+            const btnActivePurple = "flex-1 py-2 rounded-lg font-medium border-2 border-purple-600 bg-purple-600 text-white transition text-xs md:text-sm";
+
+            // Reset botones
+            document.getElementById('btn-uci').className = btnInactive;
+            document.getElementById('btn-planta').className = btnInactive;
+            document.getElementById('btn-personalizado').className = btnInactive.replace('hover:border-blue-400', 'hover:border-purple-400');
+
+            // Ocultar campos de configuración izquierda
+            document.getElementById('uci-fields').classList.add('hidden');
+            document.getElementById('planta-fields').classList.add('hidden');
+            // Nota: Ya no existe el bloque #personalizado-fields en la izquierda
 
             if(mode === 'uci') {
+                document.getElementById('btn-uci').className = btnActiveBlue;
                 document.getElementById('uci-fields').classList.remove('hidden');
-                document.getElementById('planta-fields').classList.add('hidden');
-            } else {
-                document.getElementById('uci-fields').classList.add('hidden');
+            } else if (mode === 'planta') {
+                document.getElementById('btn-planta').className = btnActiveOrange;
                 document.getElementById('planta-fields').classList.remove('hidden');
+            } else if (mode === 'personalizado') {
+                document.getElementById('btn-personalizado').className = btnActivePurple;
+                // En modo personalizado, mostramos los resultados inmediatamente
+                document.getElementById('results-content').classList.remove('hidden');
+                document.getElementById('results-container').classList.add('hidden');
+            }
+
+            // GESTIÓN DE INPUTS VS TEXTO EN RESULTADOS
+            const autoEls = document.querySelectorAll('.mode-auto');
+            const manEls = document.querySelectorAll('.mode-manual');
+
+            if (mode === 'personalizado') {
+                autoEls.forEach(el => el.classList.add('hidden'));
+                manEls.forEach(el => el.classList.remove('hidden'));
+                document.getElementById('prot-target').innerText = "Modo Manual";
+                // Desactivamos selector de ratio visualmente (opcional)
+                document.getElementById('ratio-hc-lip').parentElement.classList.add('hidden');
+            } else {
+                autoEls.forEach(el => el.classList.remove('hidden'));
+                manEls.forEach(el => el.classList.add('hidden'));
+                document.getElementById('ratio-hc-lip').parentElement.classList.remove('hidden');
             }
         }
 
@@ -1942,195 +2230,306 @@
             if (document.getElementById('mod-intake').checked) moderateCount++;
 
             const badge = document.getElementById('risk-badge');
+            const optionsDiv = document.getElementById('refeeding-options'); // Referencia al nuevo selector
 
             if (severeCount >= 1) {
                 currentRiskStatus = 'severe';
                 badge.className = 'text-xs bg-red-100 text-red-700 px-2 py-1 rounded font-bold border border-red-200';
                 badge.innerText = 'RIESGO SEVERO';
+                // MOSTRAR nuevo selector
+                if(optionsDiv) optionsDiv.classList.remove('hidden');
             } else if (moderateCount >= 2) {
                 currentRiskStatus = 'moderate';
                 badge.className = 'text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded font-bold border border-orange-200';
                 badge.innerText = 'RIESGO MODERADO';
+                // MOSTRAR nuevo selector
+                if(optionsDiv) optionsDiv.classList.remove('hidden');
             } else {
                 currentRiskStatus = 'none';
                 badge.className = 'text-xs bg-green-100 text-green-700 px-2 py-1 rounded font-bold border border-green-200';
                 badge.innerText = 'Sin Riesgo';
+                // OCULTAR nuevo selector y resetear a fase 1
+                if(optionsDiv) optionsDiv.classList.add('hidden');
+                // Resetear el valor por seguridad para la próxima vez que aparezca
+                if(document.getElementById('refeeding-phase')) document.getElementById('refeeding-phase').value = "0.25"; 
             }
         }
 
-        function calcular() {
-            // Update risk before calculation
-            evaluateRisk();
+        // Función para actualizar totales en tiempo real (Modo Personalizado)
+        function updateManualLive() {
+            if (mode !== 'personalizado') return;
 
-            // 1. Get Base Inputs
-            const sexo = document.getElementById('sexo').value;
-            const edad = parseFloat(document.getElementById('edad').value) || 0;
+            const gProt = parseFloat(document.getElementById('man-prot').value) || 0;
+            const gHC = parseFloat(document.getElementById('man-hc').value) || 0;
+            const gLip = parseFloat(document.getElementById('man-lip').value) || 0;
+
+            const kcal = (gProt * 4) + (gHC * 4) + (gLip * 9);
+            document.getElementById('total-kcal').innerText = kcal.toFixed(0) + " kcal/día";
+            
+            // Actualizar N2 y Ratio
+            const n2 = gProt / 6.25;
+            document.getElementById('val-n2').innerText = n2.toFixed(1);
+            
+            const npc = (gHC * 4) + (gLip * 9);
+            const ratio = n2 > 0 ? (npc/n2) : 0;
+            document.getElementById('calc-ratio-npcn').innerText = ratio.toFixed(0);
+
+            // Actualizar porcentajes visuales
+            if (npc > 0) {
+                const pctHC = ((gHC * 4) / npc) * 100;
+                document.getElementById('hc-ratio-display').innerText = `Manual (${pctHC.toFixed(0)}%)`;
+                document.getElementById('lip-ratio-display').innerText = `Manual (${(100-pctHC).toFixed(0)}%)`;
+            }
+
+            // Disparar recálculo de insulina/volumen si es necesario (debounce opcional)
+            calcular(); 
+        }
+
+        // Controlar visibilidad de la opción Ascitis
+        function handleUciTypeChange() {
+            const tipo = document.getElementById('uci-tipo').value;
+            const ascitesContainer = document.getElementById('ascites-container');
+            const ascitesCheck = document.getElementById('has-ascites');
+
+            if (tipo === 'hepatico') {
+                ascitesContainer.classList.remove('hidden');
+            } else {
+                ascitesContainer.classList.add('hidden');
+                ascitesCheck.checked = false; // Desmarcar si cambia de patología
+            }
+            calcular();
+        }
+
+        // Función auxiliar para mostrar/ocultar la opción de Ascitis
+        function handleUciTypeChange() {
+            const tipo = document.getElementById('uci-tipo').value;
+            const container = document.getElementById('ascites-container');
+            const check = document.getElementById('has-ascites');
+
+            if (tipo === 'hepatico') {
+                container.classList.remove('hidden');
+            } else {
+                container.classList.add('hidden');
+                // Si cambiamos de paciente, desmarcamos la ascitis para evitar errores
+                if(check) check.checked = false;
+            }
+            // Recalculamos
+            calcular();
+        }
+
+        function calcular() {
+            // 1. Datos Básicos
+            evaluateRisk();
             const peso = parseFloat(document.getElementById('peso').value) || 0;
             const alturaCm = parseFloat(document.getElementById('altura').value) || 0;
+            const sexo = document.getElementById('sexo').value;
+            const edad = parseFloat(document.getElementById('edad').value) || 0;
             
-            if (peso === 0 || alturaCm === 0) {
-                alert("Por favor ingrese Peso y Altura válidos");
-                return;
+            if (peso === 0 || alturaCm === 0) { 
+                if(mode !== 'personalizado') { alert("Ingrese peso y altura."); return; }
             }
 
-            // 2. Anthropometry
+            // 2. Antropometría
             const alturaM = alturaCm / 100;
-            const imc = peso / (alturaM * alturaM);
-            let ibw = 0;
+            const imc = (alturaM > 0) ? peso / (alturaM * alturaM) : 0;
+            let ibw = (alturaM * alturaM) * (sexo === 'hombre' ? 23 : 22);
+            
+            // --- LÓGICA DE SELECCIÓN DE PESO ---
+            let pesoCalculo = peso; // Por defecto usamos el Peso Real
+            
+            // Leemos estado de Hepático y Ascitis
+            const tipoUci = document.getElementById('uci-tipo') ? document.getElementById('uci-tipo').value : '';
+            const isHepatico = (mode === 'uci' && tipoUci === 'hepatico');
+            const hasAscites = document.getElementById('has-ascites') ? document.getElementById('has-ascites').checked : false;
+            
+            const lblPeso = document.getElementById('res-calc-weight');
 
-            // FÓRMULA DE PESO IDEAL ACTUALIZADA: Talla(m)^2 * IMC objetivo
-            if (sexo === 'hombre') {
-                ibw = (alturaM * alturaM) * 23; 
+            if (isHepatico && hasAscites) {
+                // CASO 1: Hepático CON Ascitis -> Usamos PESO IDEAL
+                pesoCalculo = ibw;
+                lblPeso.innerText = ibw.toFixed(1) + " (Ideal)";
+                lblPeso.className = "text-orange-600 font-bold"; // Naranja para destacar cambio
+            
+            } else if (imc > 30) {
+                // CASO 2: Obesidad -> Usamos PESO AJUSTADO (Mantenemos tu lógica original)
+                pesoCalculo = ibw + ((peso - ibw) * 0.25);
+                lblPeso.innerText = pesoCalculo.toFixed(1) + " (Ajustado)";
+                lblPeso.className = "text-blue-600 font-bold";
+            
             } else {
-                ibw = (alturaM * alturaM) * 22;
+                // CASO 3: Resto (Incluido Hepático SIN Ascitis) -> Usamos PESO REAL
+                pesoCalculo = peso;
+                lblPeso.innerText = pesoCalculo.toFixed(1);
+                lblPeso.className = "text-blue-600 font-bold";
             }
 
-            let pesoCalculo = (imc > 30) ? ibw : peso;
-
-            // 3. Logic Branching
-            let targetKcal = 0;
-            let targetProtPerKg = 0;
+            // 3. Inicialización de Variables
+            let finalKcal = 0;
+            let gramsProt = 0, gramsHC = 0, gramsLip = 0;
             let warnings = [];
-            
-            const hasRefeedingRisk = (currentRiskStatus === 'severe' || currentRiskStatus === 'moderate');
+            let targetProtPerKg = 0;
 
-            if (hasRefeedingRisk) {
-                // Traducir el estado para mostrar en español
-                const riskLabel = (currentRiskStatus === 'severe') ? 'SEVERO' : 'MODERADO';
-                warnings.push(`⚠️ RIESGO REALIMENTACIÓN: <strong>${riskLabel}</strong>`);
+            // 1. Alerta BCAA (Si es Hepático)
+            const checkTipoHepatico = document.getElementById('uci-tipo');
+            if (mode === 'uci' && checkTipoHepatico && checkTipoHepatico.value === 'hepatico') {
+                warnings.push("Las fórmulas enriquecidas con BCAA (como Aminosteril N-Hepa) no deben usarse de rutina. Se reservan exclusivamente para pacientes con encefalopatía hepática grado III-IV.");
             }
 
-            if (mode === 'uci') {
-                // --- UCI LOGIC ---
-                const tipo = document.getElementById('uci-tipo').value;
-                const fase = document.getElementById('uci-dias').value;
-                const isVent = document.getElementById('vent-mec').checked;
-
-                // Standard Calorie Calculation UCI
-                if (imc > 30 && imc <= 50 && tipo === 'normal') {
-                    targetKcal = 14 * peso; 
-                    pesoCalculo = peso; 
-                } else if (imc > 50 && tipo === 'normal') {
-                    targetKcal = 22 * ibw; 
-                } else if (tipo === 'sepsis') {
-                    targetKcal = (fase === 'aguda') ? 20 * peso : 27.5 * peso; 
-                } else if (tipo === 'hepatico') {
-                    targetKcal = 19 * peso; 
-                } else {
-                      if(fase === 'aguda') targetKcal = 19 * peso;
-                      else targetKcal = 27.5 * peso;
-                }
-                
-                if (isVent && tipo === 'normal') targetKcal = 22.5 * pesoCalculo;
-
-                // --- APPLY REFEEDING RULE (UCI Specific) ---
-                if (hasRefeedingRisk) {
-                    const originalKcal = targetKcal;
-                    targetKcal = targetKcal * 0.70;
-                    warnings.push(`Protocolo UCI: Calorías reducidas al 70% (Original: ${originalKcal.toFixed(0)} kcal). Escalar en 5 días.`);
-                }
-
-                // Protein Logic UCI
-                if (tipo === 'hepatico') {
-                    targetProtPerKg = 1.25; 
-                    warnings.push("Usar soluciones ricas en AA ramificados (Hepático).");
-                } else if (tipo === 'fistula') {
-                    targetProtPerKg = 2.25; 
-                } else if (tipo === 'sepsis') {
-                    targetProtPerKg = (fase === 'aguda') ? 1.4 : 1.75;
-                } else if (isVent) {
-                    targetProtPerKg = 1.5;
-                } else if (imc <= 30) {
-                    targetProtPerKg = (fase === 'aguda') ? 1.35 : 1.75;
-                } else {
-                    targetProtPerKg = (imc > 40) ? 2.5 : 2.0; 
-                    pesoCalculo = ibw; 
-                }
-
-            } else {
-                // --- PLANTA / NO UCI LOGIC ---
-                const estres = document.getElementById('planta-estres').value; 
-                const actividad = parseFloat(document.getElementById('planta-actividad').value);
-                
-                if (hasRefeedingRisk) {
-                    // --- APPLY REFEEDING RULE (Planta Specific) ---
-                    targetKcal = 12.5 * pesoCalculo; // 10-15 kcal/kg
-                    warnings.push("Protocolo Planta: Inicio restringido a 10-15 kcal/kg.");
-                    warnings.push("SUPLEMENTAR TIAMINA OBLIGATORIA (300mg x 3 días)");
-                } else {
-                    // Standard Harris Benedict
-                    let geb = 0;
-                    if (sexo === 'hombre') {
-                        geb = 66.5 + (13.75 * peso) + (5.003 * alturaCm) - (6.755 * edad);
-                    } else {
-                        geb = 655.1 + (9.563 * peso) + (1.850 * alturaCm) - (4.676 * edad);
-                    }
-                    
-                    let factorEstresVal = 1.1;
-                    if(estres === 'moderado') factorEstresVal = 1.25;
-                    if(estres === 'intenso') factorEstresVal = 1.45;
-
-                    targetKcal = geb * actividad * factorEstresVal;
-                }
-
-                // Protein Planta
-                if(estres === 'leve') targetProtPerKg = 1.1;
-                else if(estres === 'moderado') targetProtPerKg = 1.25;
-                else targetProtPerKg = 1.45;
+            // 2. Alerta Sodio (Si tiene Ascitis) - NUEVO CÓDIGO
+            const checkAscitis = document.getElementById('has-ascites');
+            if (checkAscitis && checkAscitis.checked) {
+                warnings.push("⚠️ En pacientes con ascitis, la ingesta de sodio debe restringirse a 40–60 mmol/día");
             }
 
-            // 4. Calculations Flow
-            const gramsProt = targetProtPerKg * pesoCalculo;
-            const kcalProt = gramsProt * 4;
+            // --- CÁLCULO GEB (Harris-Benedict) ---
+            // Lo calculamos aquí para tener el dato disponible.
+            // Para Planta se usará como base. Para UCI se ignorará. Para Personalizado se mostrará como guía.
+            let geb = (sexo === 'hombre') 
+                        ? 66.5 + (13.75 * peso) + (5.003 * alturaCm) - (6.755 * edad)
+                        : 655.1 + (9.563 * peso) + (1.850 * alturaCm) - (4.676 * edad);
             
-            let nonProteinKcal = targetKcal - kcalProt;
-            if (nonProteinKcal < 0) nonProteinKcal = 0; // Safety
+            // Elementos de visualización del GEB Orientativo
+            const gebContainer = document.getElementById('geb-guide-container');
+            const gebValueEl = document.getElementById('val-geb-guide');
 
+            // Aportes Externos
             const propofolMl = parseFloat(document.getElementById('propofol').value) || 0;
             const citratoMmol = parseFloat(document.getElementById('citrato').value) || 0;
+            const propofolKcal = propofolMl * 1.1;
+            const citratoKcal = citratoMmol * 0.59;
+            const hasRefeedingRisk = (currentRiskStatus === 'severe' || currentRiskStatus === 'moderate');
+
+            // ==========================================
+            // LÓGICA DE CÁLCULO (RAMAS)
+            // ==========================================
             
-            const propofolLipidGrams = propofolMl * 0.1; 
-            const propofolKcal = propofolMl * 0.9; 
-            const citratoKcal = citratoMmol * 2.4; 
+            if (mode === 'personalizado') {
+                // --- RAMA 1: MODO PERSONALIZADO ---
+                
+                // 1. MOSTRAR EL GEB ORIENTATIVO
+                if (gebContainer) {
+                    gebContainer.classList.remove('hidden'); // Solo se muestra aquí
+                    gebValueEl.innerText = geb.toFixed(0);
+                }
 
-            // --- RATIO LOGIC UPDATED ---
-            // Get user selected ratio
-            const ratioSelect = document.getElementById('ratio-hc-lip');
-            const ratioVal = parseInt(ratioSelect.value) || 60; // Default 60
+                // 2. LEER INPUTS MANUALES
+                gramsProt = parseFloat(document.getElementById('man-prot').value) || 0;
+                gramsHC = parseFloat(document.getElementById('man-hc').value) || 0;
+                gramsLip = parseFloat(document.getElementById('man-lip').value) || 0;
+                
+                // 3. CALCULAR TOTALES (Factor 9 para lípidos)
+                finalKcal = (gramsProt * 4) + (gramsHC * 4) + (gramsLip * 9);
+                targetProtPerKg = (pesoCalculo > 0) ? gramsProt / pesoCalculo : 0;
+                
+                // Actualizar texto informativo de proteínas
+                document.getElementById('prot-target').innerText = `Modo Manual: ${targetProtPerKg.toFixed(2)} g/kg`;
+
+                if (hasRefeedingRisk) warnings.push("⚠️ RIESGO REALIMENTACIÓN: Modo Manual activo. Verifique aportes reducidos.");
+
+            } else {
+                // --- RAMA 2: MODOS AUTOMÁTICOS (UCI / PLANTA) ---
+
+                // 1. OCULTAR EL GEB ORIENTATIVO (Para que no moleste en automático)
+                if (gebContainer) gebContainer.classList.add('hidden');
+
+                let baseTargetKcal = 0;
+
+                // A. Calcular Kcal Base
+                if (mode === 'uci') {
+                    // LÓGICA UCI INTACTA (Usa factores fijos por peso, ignora GEB)
+                    const tipo = document.getElementById('uci-tipo').value;
+                    const fase = document.getElementById('uci-dias').value;
+                    const isVent = document.getElementById('vent-mec').checked;
+                    
+                    if (imc > 30 && imc <= 50 && tipo === 'normal') baseTargetKcal = 25 * pesoCalculo;
+                    else if (tipo === 'sepsis') baseTargetKcal = (fase === 'aguda') ? 20 * pesoCalculo : 27.5 * pesoCalculo;
+                    else if (tipo === 'hepatico') baseTargetKcal = 32.5 * pesoCalculo;
+                    else baseTargetKcal = (fase === 'aguda') ? 19 * pesoCalculo : 27.5 * pesoCalculo;
+                    if (isVent && tipo === 'normal') baseTargetKcal = 22.5 * pesoCalculo;
+                
+                } else {
+                    // LÓGICA PLANTA INTACTA (Usa GEB calculado arriba * factores)
+                    const estres = document.getElementById('planta-estres').value;
+                    const actividad = parseFloat(document.getElementById('planta-actividad').value);
+                    let factor = (estres === 'moderado') ? 1.25 : (estres === 'intenso' ? 1.45 : 1.1);
+                    
+                    baseTargetKcal = geb * actividad * factor;
+                }
+
+                // B. Ajuste por Riesgo y Reparto Automático
+                if (hasRefeedingRisk) {
+                    const rfFactor = parseFloat(document.getElementById('refeeding-phase').value) || 0.25;
+                    finalKcal = baseTargetKcal * rfFactor;
+                    warnings.push(`⚠️ RIESGO REALIMENTACIÓN: Fase ${(rfFactor*100).toFixed(0)}%`);
+                    warnings.push("SUPLEMENTAR TIAMINA OBLIGATORIA");
+
+                    gramsProt = (finalKcal * 0.20) / 4;
+                    const kHC = (finalKcal * 0.50);
+                    const kLip = (finalKcal * 0.30);
+                    
+                    gramsHC = Math.max(0, kHC - citratoKcal) / 4; 
+                    gramsHC = kHC / 4; 
+                    gramsLip = kLip / 9; // 9 kcal/g
+                    
+                    document.getElementById('hc-ratio-display').innerText = "Glucosa (50% Fijo)";
+                    document.getElementById('lip-ratio-display').innerText = "Emulsión (30% Fijo)";
+                    document.getElementById('ratio-hc-lip').disabled = true;
+
+                } else {
+                    // Estándar (Sin riesgo)
+                    finalKcal = baseTargetKcal;
+                    document.getElementById('ratio-hc-lip').disabled = false;
+
+                    // Proteínas
+                    if (mode === 'uci') {
+                        const tipo = document.getElementById('uci-tipo').value;
+                        const fase = document.getElementById('uci-dias').value;
+                        if (tipo === 'hepatico') targetProtPerKg = 1.25;
+                        else if (tipo === 'fistula') targetProtPerKg = 2.25;
+                        else if (tipo === 'sepsis') targetProtPerKg = (fase === 'aguda') ? 1.4 : 1.75;
+                        else targetProtPerKg = (imc <= 30 && fase === 'aguda') ? 1.35 : 1.3;
+                    } else {
+                         const estres = document.getElementById('planta-estres').value;
+                         targetProtPerKg = (estres === 'leve') ? 1.1 : (estres === 'moderado' ? 1.25 : 1.45);
+                    }
+                    gramsProt = targetProtPerKg * pesoCalculo;
+
+                    // HC y Lípidos según Ratio
+                    let nonProtKcal = Math.max(0, finalKcal - (gramsProt * 4));
+                    const ratioVal = parseInt(document.getElementById('ratio-hc-lip').value) || 60;
+                    
+                    gramsHC = (nonProtKcal * (ratioVal/100)) / 4;
+                    gramsLip = (nonProtKcal * ((100-ratioVal)/100)) / 9;
+
+                // --- CORRECCIÓN ESPEN: Límite Glucosa Hepáticos (4 g/kg) ---
+                // Si es hepático, aseguramos glucosa (min) pero limitamos exceso (max 4g/kg)
+                if (mode === 'uci' && document.getElementById('uci-tipo').value === 'hepatico') {
+                    const maxHC = 4 * pesoCalculo; 
+                    if (gramsHC > maxHC) {
+                        const excesoKcal = (gramsHC - maxHC) * 4;
+                        gramsHC = maxHC; // Limitamos glucosa
+                        gramsLip += (excesoKcal / 9); // Pasamos la energía sobrante a lípidos
+                    }
+                }
+                    
+                    document.getElementById('prot-target').innerText = `Target: ${targetProtPerKg.toFixed(2)} g/kg`;
+                    document.getElementById('hc-ratio-display').innerText = `Glucosa (${ratioVal}%)`;
+                    document.getElementById('lip-ratio-display').innerText = `Emulsión (${100-ratioVal}%)`;
+                }
+            } // Fin Else Auto
+
+            // ==========================================
+            // RENDERIZADO COMÚN (RESULTADOS)
+            // ==========================================
             
-            let ratioHC = ratioVal / 100;
-            let ratioLip = 1 - ratioHC;
-
-            let targetKcalHC = nonProteinKcal * ratioHC;
-            let targetKcalLip = nonProteinKcal * ratioLip;
-
-            let bagKcalHC = targetKcalHC - citratoKcal;
-            if(bagKcalHC < 0) bagKcalHC = 0;
-
-            let bagKcalLip = targetKcalLip - propofolKcal;
-            if(bagKcalLip < 0) bagKcalLip = 0;
-
-            const gramsHC = bagKcalHC / 4; 
-            const gramsLip = bagKcalLip / 10; 
-
-            // Limits Check
-            const limitHC = (mode === 'uci' && document.getElementById('uci-tipo').value === 'hepatico') ? 2 : 3.5; 
-            const limitLip = (mode === 'uci' && document.getElementById('uci-tipo').value === 'hepatico') ? 1 : 1.3; 
-
-            const currentHCperKg = (gramsHC * 4 + citratoKcal)/4 / pesoCalculo;
-            const currentLipperKg = (gramsLip * 9 + propofolKcal)/9 / pesoCalculo;
-
-            if (currentHCperKg > limitHC) warnings.push(`Exceso de HC (${currentHCperKg.toFixed(1)} g/kg). Límite recomendado: ${limitHC} g/kg`);
-            if (currentLipperKg > limitLip) warnings.push(`Exceso de Lípidos (${currentLipperKg.toFixed(1)} g/kg). Límite recomendado: ${limitLip} g/kg`);
-
-            // 5. Render
             document.getElementById('results-content').classList.remove('hidden');
             document.getElementById('results-container').classList.add('hidden');
-            
+
             document.getElementById('res-imc').innerText = imc.toFixed(1);
             document.getElementById('res-ibw').innerText = ibw.toFixed(1);
             document.getElementById('res-calc-weight').innerText = pesoCalculo.toFixed(1);
-            
+
+            // Mostrar Alertas
             const alertsBox = document.getElementById('alerts-box');
             if (warnings.length > 0) {
                 alertsBox.classList.remove('hidden');
@@ -2139,122 +2538,114 @@
                 alertsBox.classList.add('hidden');
             }
 
-            document.getElementById('total-kcal').innerText = targetKcal.toFixed(0) + " kcal/día";
-            document.getElementById('kcal-type-label').innerText = hasRefeedingRisk ? "TOTAL RESTRINGIDO" : "TOTAL CALCULADO";
+            document.getElementById('total-kcal').innerText = finalKcal.toFixed(0) + " kcal/día";
             
-            document.getElementById('prot-target').innerText = `Target: ${targetProtPerKg.toFixed(2)} g/kg`;
+            // GRAMOS: Actualizamos SIEMPRE los textos para la pestaña elaboración (aunque estén ocultos en manual)
             document.getElementById('val-prot').innerText = gramsProt.toFixed(1);
-            document.getElementById('kcal-prot').innerText = kcalProt.toFixed(0);
+            document.getElementById('val-hc').innerText = gramsHC.toFixed(1); 
+            document.getElementById('val-lip').innerText = gramsLip.toFixed(1);
+
+            document.getElementById('kcal-prot').innerText = (gramsProt * 4).toFixed(0);
             document.getElementById('val-n2').innerText = (gramsProt / 6.25).toFixed(1);
 
-            // Update display text for ratios
-            document.getElementById('hc-ratio-display').innerText = `Glucosa (${ratioVal}%)`;
-            document.getElementById('lip-ratio-display').innerText = `Emulsión lipídica (${100-ratioVal}%)`;
+            document.getElementById('kcal-hc').innerText = (gramsHC * 4).toFixed(0);
+            document.getElementById('val-citrato-kcal').innerText = citratoKcal.toFixed(0);
+            document.getElementById('citrato-warning').classList.toggle('hidden', citratoKcal <= 0);
 
-            document.getElementById('val-hc').innerText = gramsHC.toFixed(1);
-            document.getElementById('kcal-hc').innerText = bagKcalHC.toFixed(0);
+            const lipFactor = 9; 
+            document.getElementById('kcal-lip').innerText = (gramsLip * lipFactor).toFixed(0);
             
-            if(citratoKcal > 0) {
-                document.getElementById('citrato-warning').classList.remove('hidden');
-                document.getElementById('val-citrato-kcal').innerText = citratoKcal.toFixed(0);
-            } else document.getElementById('citrato-warning').classList.add('hidden');
+            document.getElementById('val-propofol-lip').innerText = (propofolMl * 0.1).toFixed(1);
+            document.getElementById('propofol-warning').classList.toggle('hidden', propofolKcal <= 0);
 
-            document.getElementById('val-lip').innerText = gramsLip.toFixed(1);
-            document.getElementById('kcal-lip').innerText = bagKcalLip.toFixed(0);
+            // Ratio NPC/N
+            const npc = (gramsHC * 4) + (gramsLip * lipFactor);
+            const n2 = gramsProt / 6.25;
+            const ratio = n2 > 0 ? npc/n2 : 0;
+            document.getElementById('calc-ratio-npcn').innerText = ratio.toFixed(0);
+
+            // --- ACTUALIZACIÓN TIAMINA (Riesgo Realimentación) ---
+            const elTiamina = document.getElementById('val-tiamina');
+            const rfPhase = document.getElementById('refeeding-phase').value;
             
-            if(propofolKcal > 0) {
-                const pw = document.getElementById('propofol-warning');
-                pw.classList.remove('hidden');
-                document.getElementById('val-propofol-lip').innerText = propofolLipidGrams.toFixed(1);
+            // Si hay riesgo y estamos en la fase 1 (Días 1-4)
+            if (hasRefeedingRisk && rfPhase === '0.25') {
+                 elTiamina.innerText = "300 mg (3 días)";
+                 // Cambiamos estilo a rojo para resaltar la importancia
+                 elTiamina.className = "text-xs font-bold text-red-600 mt-1 pl-2 border-l-2 border-red-200"; 
             } else {
-                document.getElementById('propofol-warning').classList.add('hidden');
+                 elTiamina.innerText = "3 mg"; // Dosis estándar
+                 // Estilo original azul
+                 elTiamina.className = "text-xs font-bold text-blue-600 mt-1 pl-2 border-l-2 border-blue-100"; 
             }
 
-            // --- GENERACIÓN DE LA LISTA DE ELECTROLITOS (LIMPIA) ---
-            const elList = document.getElementById('electro-list');
-            elList.innerHTML = '';
-
-            // Función helper para crear filas limpias
-            const createRow = (label, id, unit, subtitle, isAuto = false, isReadOnly = false) => `
-            <li class="flex items-center justify-between border-b border-slate-100 py-2 ${isAuto ? 'bg-blue-50/30 px-2 -mx-2 rounded' : ''}">
-                <div class="flex flex-col">
-                    <span class="font-medium text-sm text-slate-700">${label}</span>
-                    <span class="text-[10px] ${isAuto ? 'text-slate-400' : 'text-blue-600 font-semibold'}">${subtitle}</span>
-                </div>
-                <div class="flex items-center gap-1">
-                    <input type="number" id="${id}" 
-                           ${isReadOnly ? 'readonly' : `onchange="calculateCompounding('${id}')"`} 
-                           class="w-20 text-sm border-${isAuto ? 'blue-300' : 'slate-300'} rounded-md p-1 border text-right focus:ring-blue-500 bg-${isAuto || isReadOnly ? 'white' : 'slate-50'} font-bold text-${isAuto ? 'blue-800' : 'slate-700'} ${isReadOnly ? 'cursor-not-allowed text-slate-400' : ''}" 
-                           placeholder="${isAuto ? 'Auto' : '0'}">
-                    <span class="text-xs text-slate-500 w-8">${unit}</span>
-                </div>
-            </li>`;
-
-            elList.innerHTML += createRow('Sodio', 'input-sodio', 'mEq', `Rango: ${(1*pesoCalculo).toFixed(0)} - ${(2*pesoCalculo).toFixed(0)} mEq`);
-            elList.innerHTML += createRow('Potasio', 'input-potasio', 'mEq', `Rango: ${(1*pesoCalculo).toFixed(0)} - ${(1.5*pesoCalculo).toFixed(0)} mEq`);
-            elList.innerHTML += createRow('Cloro', 'input-cloro', 'mEq', 'Derivado de NaCl y KCl', true); // Auto
-            elList.innerHTML += createRow('Acetato', 'input-acetato', 'mEq', 'Equilibrio Ácido-Base', true); // Auto
-            elList.innerHTML += createRow('Calcio', 'input-calcio', 'mEq', '10 - 15 mEq Total');
-            elList.innerHTML += createRow('Magnesio', 'input-magnesio', 'mEq', '8 - 20 mEq');
-            elList.innerHTML += createRow('Sulfato', 'input-sulfato', 'mEq', 'Derivado de Magnesio', false, true); // Readonly
-            elList.innerHTML += createRow('Fósforo', 'input-fosforo', 'mmol', '20 - 40 mmol');
-
-            // Lógica de Tiamina e Insulina (se mantiene igual)
-            if (hasRefeedingRisk) {
-                document.getElementById('val-tiamina').innerText = "300 mg (3 días)";
-                document.getElementById('val-tiamina').classList.add('text-red-600', 'font-extrabold');
-            } else {
-                document.getElementById('val-tiamina').innerText = "3 mg";
-                document.getElementById('val-tiamina').classList.remove('text-red-600', 'font-extrabold');
-            }
+            // Insulina
             const liInsulina = document.getElementById('li-insulina');
             if (gramsHC > 0) {
                 liInsulina.classList.remove('hidden');
-                const units = (gramsHC / 160) * 16;
-                document.getElementById('val-insulina').innerText = Math.round(units) + " UI";
-            } else { liInsulina.classList.add('hidden'); }
-            
-            // IMPORTANTE: Forzar un cálculo inicial (aunque sea con ceros) para preparar la ficha de elaboración
-            setTimeout(calculateCompounding, 100);
+                document.getElementById('val-insulina').innerText = Math.round((gramsHC / 160) * 16) + " UI";
+            } else {
+                liInsulina.classList.add('hidden');
+            }
 
-            // --- FLUID BALANCE LOGIC UPDATED ---
+            // Electrolitos y Volumen
+            updateElectrolytesAndVolume(pesoCalculo);
+        }
+
+        // Helper separado para limpiar el código
+        function updateElectrolytesAndVolume(peso) {
+            const elList = document.getElementById('electro-list');
+            elList.innerHTML = '';
+            
+            const createRow = (lbl, id, u, sub, auto=false, ro=false) => `
+            <li class="flex items-center justify-between border-b border-slate-100 py-2 ${auto?'bg-blue-50/30 -mx-2 px-2 rounded':''}">
+                <div><span class="font-medium text-sm text-slate-700">${lbl}</span><div class="text-[10px] ${auto?'text-slate-400':'text-blue-600 font-semibold'}">${sub}</div></div>
+                <div class="flex items-center gap-1"><input type="number" id="${id}" ${ro?'readonly':`onchange="calculateCompounding('${id}')"`} class="w-20 text-sm border-${auto?'blue-300':'slate-300'} rounded p-1 text-right font-bold bg-${auto||ro?'white':'slate-50'}" placeholder="${auto?'Auto':'0'}"><span class="text-xs text-slate-500 w-8">${u}</span></div>
+            </li>`;
+
+            elList.innerHTML += createRow('Sodio', 'input-sodio', 'mEq', `Rango: ${(1*peso).toFixed(0)}-${(2*peso).toFixed(0)}`);
+            elList.innerHTML += createRow('Potasio', 'input-potasio', 'mEq', `Rango: ${(1*peso).toFixed(0)}-${(1.5*peso).toFixed(0)}`);
+            elList.innerHTML += createRow('Cloro', 'input-cloro', 'mEq', 'Auto (NaCl+KCl)', true);
+            elList.innerHTML += createRow('Acetato', 'input-acetato', 'mEq', 'Auto Equilibrio', true);
+            elList.innerHTML += createRow('Calcio', 'input-calcio', 'mEq', '10-15 mEq Total');
+            elList.innerHTML += createRow('Magnesio', 'input-magnesio', 'mEq', '8-20 mEq');
+            elList.innerHTML += createRow('Sulfato', 'input-sulfato', 'mEq', 'Auto (MgSO4)', false, true);
+            elList.innerHTML += createRow('Fósforo', 'input-fosforo', 'mmol', '20-40 mmol');
+
+            // Volumen
             const diuresis = parseFloat(document.getElementById('diuresis').value) || 0;
             const suero = parseFloat(document.getElementById('suero').value) || 0;
-            let volumen = 0;
-            const estandarVolumen = 30 * pesoCalculo; 
-
-            if (diuresis > 0) {
-                volumen = diuresis + 500 - suero;
-                if(volumen < 0) volumen = 0; 
-                document.getElementById('vol-formula').innerText = 'Balance Hídrico (Diuresis + 500 - Suero)';
-            } else if (suero > 0) {
-                volumen = estandarVolumen - suero;
-                if(volumen < 0) volumen = 0;
-                document.getElementById('vol-formula').innerText = 'Estimación por peso (30ml/kg) - Suero externo';
-            } else {
-                volumen = estandarVolumen;
-                document.getElementById('vol-formula').innerText = 'Estimación estándar (30ml/kg)';
+            let vol = (diuresis > 0) ? (diuresis + 500 - suero) : ((30 * peso) - suero);
+            if(vol < 0) vol = 0;
+            
+            document.getElementById('val-volumen-sugerido').innerText = vol.toFixed(0);
+            if(!document.getElementById('volumen-administrar').value) {
+                document.getElementById('volumen-administrar').value = vol.toFixed(0);
             }
             
-            const volumenFixed = volumen.toFixed(0);
-            document.getElementById('val-volumen-sugerido').innerText = volumenFixed;
-            document.getElementById('volumen-administrar').value = volumenFixed;
-
-            // --- CORRECCIÓN FINAL: Ejecutar cálculo de mezcla inmediatamente ---
-            // Esto forzará el cálculo de Cloro y Sulfato con los valores por defecto recién insertados
-            setTimeout(calculateCompounding, 50);
+            // Recalcular Ficha Elaboración si ya está abierta
+            if(currentTab === 'elaboracion') setTimeout(calculateCompounding, 50);
         }
 
 function prepareAndPrint() {
             // 1. Asegurar cálculos actualizados
             calculateCompounding(); 
 
+            // --- CÁLCULO PREVIO DEL RATIO NPC/N ---
+            const n2Val = parseFloat(document.getElementById('val-n2').innerText) || 0;
+            const kcalHC = parseFloat(document.getElementById('kcal-hc').innerText) || 0;
+            const kcalLip = parseFloat(document.getElementById('kcal-lip').innerText) || 0;
+            
+            const ratioNPCN = n2Val > 0 ? ((kcalHC + kcalLip) / n2Val) : 0;
+            const ratioStr = ratioNPCN.toFixed(0);
+
             // --- A. RELLENAR EL INFORME PRINCIPAL ---
             const now = new Date();
             const fechaStr = now.toLocaleDateString() + ' ' + now.toLocaleTimeString();
             document.getElementById('p-fecha').innerText = fechaStr;
             
-            // Datos básicos
+            // Datos básicos (CON NOMBRE AÑADIDO)
+            const nombre = document.getElementById('nombre-paciente').value || 'PACIENTE SIN NOMBRE';
             const nhc = document.getElementById('nhc').value || '-';
             const cama = document.getElementById('cama').value || '-';
             const peso = parseFloat(document.getElementById('peso').value) || 0;
@@ -2262,6 +2653,8 @@ function prepareAndPrint() {
             const edad = document.getElementById('edad').value;
             const sexo = document.getElementById('sexo').value;
 
+            // Inyectar en Informe
+            document.getElementById('p-nombre').innerText = nombre;
             document.getElementById('p-nhc').innerText = nhc;
             document.getElementById('p-cama').innerText = cama;
             document.getElementById('p-edad-sexo').innerText = `${edad} a / ${sexo.charAt(0).toUpperCase() + sexo.slice(1)}`;
@@ -2275,17 +2668,29 @@ function prepareAndPrint() {
             pRisk.innerText = riskBadge.innerText;
             pRisk.className = riskBadge.innerText.includes('SEVERO') ? "text-lg font-bold text-red-600" : (riskBadge.innerText.includes('MODERADO') ? "text-lg font-bold text-orange-600" : "text-lg font-bold text-green-600");
 
-            let protocolText = mode === 'uci' 
-                ? `UCI: ${document.getElementById('uci-tipo').value}` 
-                : `Planta: ${document.getElementById('planta-estres').value}`;
+            // --- LÓGICA DE TEXTO DE PROTOCOLO ---
+            let protocolText = "";
+            if (mode === 'uci') {
+                protocolText = `UCI: ${document.getElementById('uci-tipo').value}`;
+            } else if (mode === 'planta') {
+                protocolText = `Planta: ${document.getElementById('planta-estres').value}`;
+            } else {
+                protocolText = "MODO PERSONALIZADO (Prescripción Manual)";
+            }
             document.getElementById('p-protocolo').innerText = protocolText;
-
+            
             // Datos Prescripción
             const kcalTotal = parseFloat(document.getElementById('total-kcal').innerText);
-            
             document.getElementById('p-kcal-total').innerText = document.getElementById('total-kcal').innerText;
             document.getElementById('p-kcal-nota').innerText = document.getElementById('kcal-type-label').innerText;
-            document.getElementById('p-prot-total').innerText = document.getElementById('val-prot').innerText + ' g';
+            
+            document.getElementById('p-ratio-val').innerText = ratioStr;
+
+            // Actualizar Proteínas en el Informe
+            const valProt = document.getElementById('val-prot').innerText;
+            const valN2 = document.getElementById('val-n2').innerText;
+
+            document.getElementById('p-prot-total').innerHTML = `${valProt} <span style="font-weight:normal; font-size:0.8em">g aa</span> / ${valN2} <span style="font-weight:normal; font-size:0.8em">g N</span>`;
             document.getElementById('p-prot-kg').innerText = document.getElementById('prot-target').innerText;
             document.getElementById('p-hc-total').innerText = document.getElementById('val-hc').innerText + ' g';
             document.getElementById('p-hc-kg').innerText = (parseFloat(document.getElementById('val-hc').innerText)/pesoCalc).toFixed(2) + ' g/kg';
@@ -2306,7 +2711,12 @@ function prepareAndPrint() {
                     if(sel.selectedIndex >= 0) name = sel.options[sel.selectedIndex].text;
                     else name = sel.value;
                 }
-                let syr = vol<=10?"10 ml":(vol<=20?"20 ml":(vol<=30?"30 ml":"50 ml"));
+                // CORRECCIÓN: Lógica actualizada para el informe (incluye 5ml y 2ml)
+                let syr = "50 ml";
+                if (vol <= 5) syr = "5 ml"; 
+                else if (vol <= 10) syr = "10 ml";
+                else if (vol <= 20) syr = "20 ml";
+                else if (vol <= 30) syr = "30 ml";
                 return { name, vol, syr };
             };
 
@@ -2330,7 +2740,6 @@ function prepareAndPrint() {
             const dVit4 = getData('vol-vit-4', null, 'TIAMINA (BENERVA) 100mg/ml');
             const dApi = getData('vol-api', null, 'AGUA PARA INYECTABLES');
 
-            // Rellenar Tabla Informe
             addTableRow(dProt); addTableRow(dPhos, 'Fósforo'); addTableRow(dMg, 'Magnesio');
             addTableRow(dNa, 'Sodio'); addTableRow(dKcl, 'Potasio'); addTableRow(dKac, 'Potasio');
             addTableRow(dCa, 'Calcio'); addTableRow(dHc); addTableRow(dLip);
@@ -2340,12 +2749,19 @@ function prepareAndPrint() {
             // --- GENERAR GUION PASO A PASO ---
             const stepContainer = document.getElementById('p-elaboracion-steps');
             let stepsHtml = '';
+            
             const createStepLine = (d) => {
                 if(!d) return '';
                 return `<div class="flex items-start pl-2 mb-1 border-l-2 border-slate-300"><div class="flex-1">Cargar <span class="font-bold text-slate-900 bg-slate-100 px-1 rounded">${d.vol.toFixed(1)} ml</span> de <span class="font-medium text-slate-800">${d.name}</span>.</div><div class="text-xs font-mono font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100 whitespace-nowrap"><i class="fa-solid fa-syringe mr-1"></i>Jer. ${d.syr}</div></div>`;
             };
 
-            // Pasos 1, 2, 3 (Igual que antes)
+            // --- NUEVO: ADVERTENCIA FILTRO (Antes del Paso 1) ---
+            stepsHtml += `<div class="mb-4 p-2 bg-yellow-50 border border-yellow-200 rounded text-yellow-800 text-xs flex items-center font-medium">
+                <i class="fa-solid fa-filter mr-2 text-yellow-600"></i>
+                <span>Utilizar SIEMPRE para cargar cualquier AMPOLLA DE VIDRIO o el CALCIO una jeringa con <strong>filtro de 5 µm</strong></span>
+            </div>`;
+
+            // Pasos 1, 2, 3
             stepsHtml += `<div class="mb-3"><h4 class="font-bold text-blue-800 text-sm mb-1">PASO 1: Mezcla Base (Aminoácidos + Glucosa)</h4>`;
             if(dProt) stepsHtml += createStepLine(dProt); if(dHc) stepsHtml += createStepLine(dHc); stepsHtml += `</div>`;
 
@@ -2355,7 +2771,7 @@ function prepareAndPrint() {
             stepsHtml += `<div class="mb-3"><h4 class="font-bold text-blue-800 text-sm mb-1">PASO 3: Tamponamiento y Agua</h4>`;
             if(dPhos) stepsHtml += createStepLine(dPhos); if(dMg) stepsHtml += createStepLine(dMg); if(dApi) stepsHtml += createStepLine(dApi); stepsHtml += `</div>`;
 
-            // PASO 4: CALCIO (FIXED - Siempre visible)
+            // PASO 4: CALCIO
             stepsHtml += `<div class="mb-3 bg-red-50 p-2 rounded border border-red-100">
                 <h4 class="font-bold text-red-700 text-sm mb-1 flex items-center"><i class="fa-solid fa-triangle-exclamation mr-2"></i>PASO 4: Adición de CALCIO (Punto Crítico)</h4>`;
             if(dCa) {
@@ -2369,6 +2785,8 @@ function prepareAndPrint() {
             stepsHtml += `<div class="mb-1"><h4 class="font-bold text-blue-800 text-sm mb-1">PASO 5: Fase Final (Inspección + Lípidos)</h4>`;
             if(dLip) stepsHtml += createStepLine(dLip); if(dVit1) stepsHtml += createStepLine(dVit1); if(dVit2) stepsHtml += createStepLine(dVit2); if(dVit3) stepsHtml += createStepLine(dVit3); if(dVit4) stepsHtml += createStepLine(dVit4);
             stepsHtml += `</div>`;
+            
+            stepContainer.innerHTML = stepsHtml;
             stepContainer.innerHTML = stepsHtml;
 
             // Logística Final
@@ -2382,17 +2800,15 @@ function prepareAndPrint() {
             document.getElementById('p-via').innerText = "VÍA " + viaAdmin;
             document.getElementById('p-fungibles').innerHTML = document.getElementById('res-fungibles').innerHTML.replace(/div/g, 'span class="block"');
 
-            // ... (Todo el código anterior de la función prepareAndPrint se mantiene igual) ...
-
-            // --- B. GENERACIÓN DE ETIQUETAS (CON CADUCIDAD AUTOMÁTICA) ---
+            // --- B. GENERACIÓN DE ETIQUETAS ---
             const labelsContainer = document.getElementById('labels-page-content');
             
-            // 1. Calcular Fecha de Caducidad (+4 días)
+            // Caducidad
             const expDate = new Date();
             expDate.setDate(expDate.getDate() + 4);
-            const expStr = expDate.toLocaleDateString(); // Formato local (ej: 20/12/2025)
+            const expStr = expDate.toLocaleDateString();
 
-            // 2. Preparar texto de Aditivos
+            // Texto Aditivos
             let aditivosArr = [];
             if(dVit1) aditivosArr.push(`${dVit1.name.substring(0,15)}.. (${dVit1.vol}ml)`);
             if(dVit2) aditivosArr.push(`${dVit2.name.substring(0,15)}.. (${dVit2.vol}ml)`);
@@ -2400,28 +2816,57 @@ function prepareAndPrint() {
             if(dVit4) aditivosArr.push(`Tiamina 300mg (${dVit4.vol}ml)`);
             const aditivosStr = aditivosArr.length > 0 ? aditivosArr.join('<br>') : "Ninguno";
 
-            // 3. Plantilla HTML (Con la fecha insertada en el footer)
+            // Plantilla HTML ETIQUETA (CON NOMBRE)
             const createLabelHTML = () => `
                 <div class="label-report">
                     <div class="lbl-header"><div class="lbl-title">NUTRICIÓN PARENTERAL</div><div class="lbl-subtitle">Hospital / Servicio de Farmacia</div></div>
-                    <div class="lbl-patient-row"><div>${nhc}</div><div>${cama}</div><div>${fechaStr.split(' ')[0]}</div></div>
+                    
+                    <div style="text-align:center; border-bottom:1px solid #000; margin-bottom:4px; padding-bottom:2px;">
+                        <span style="font-size:12pt; font-weight:bold; display:block;">${nombre}</span>
+                    </div>
+
+                    <div class="lbl-patient-row" style="display: flex; justify-content: center; width: 100%;">
+                        <div style="margin: 0 15px;">NHC: ${nhc}</div>
+                        <div style="margin: 0 15px;">Cama: ${cama}</div>
+                        <div style="margin: 0 15px;">Fecha: ${fechaStr.split(' ')[0]}</div>
+                    </div>
+                    
                     <div style="display:flex; gap:5px; margin-bottom:8px;">
                          <div class="lbl-box-osm" style="flex:1"><span style="font-size:7pt; display:block;">VOLUMEN</span><span class="lbl-val-bold" style="font-size:11pt;">${volFinal}</span></div>
                          <div class="lbl-box-osm" style="flex:1"><span style="font-size:7pt; display:block;">KCAL</span><span class="lbl-val-bold" style="font-size:11pt;">${kcalTotal.toFixed(0)}</span></div>
                          <div class="lbl-box-osm" style="flex:1"><span style="font-size:7pt; display:block;">VIA</span><span class="lbl-via" style="color:${viaAdmin==='CENTRAL'?'#b91c1c':'#15803d'}">${viaAdmin}</span></div>
                     </div>
+                    
                     <table class="lbl-data-table">
-                        <tr><th width="33%">AMINOÁCIDOS</th><th width="33%">GLUCOSA</th><th width="33%">LÍPIDOS</th></tr>
-                        <tr><td align="center" class="lbl-val-bold">${document.getElementById('val-prot').innerText} g</td><td align="center" class="lbl-val-bold">${document.getElementById('val-hc').innerText} g</td><td align="center" class="lbl-val-bold">${document.getElementById('val-lip').innerText} g</td></tr>
-                    </table>
-                    <table class="lbl-data-table">
-                        <tr><th>Na+</th> <th>K+</th> <th>Cl-</th> <th>Ca++</th> <th>Mg++</th> <th>P</th></tr>
-                        <tr style="text-align:center;">
-                            <td>${document.getElementById('input-sodio').value}</td><td>${document.getElementById('input-potasio').value}</td><td>${document.getElementById('input-cloro').value}</td>
-                            <td>${document.getElementById('input-calcio').value}</td><td>${document.getElementById('input-magnesio').value}</td><td>${document.getElementById('input-fosforo').value}</td>
+                        <tr><th width="40%">PROTEÍNAS (AA / N)</th><th width="30%">GLUCOSA</th><th width="30%">LÍPIDOS</th></tr>
+                        <tr>
+                            <td align="center" class="lbl-val-bold" style="font-size: 8pt;">
+                                ${document.getElementById('val-prot').innerText} g / ${document.getElementById('val-n2').innerText} g N
+                                <br><span style="font-size:6pt; font-weight:normal;">(Kcal no prot./g N: ${ratioStr})</span>
+                            </td>
+                            <td align="center" class="lbl-val-bold">${document.getElementById('val-hc').innerText} g</td>
+                            <td align="center" class="lbl-val-bold">${document.getElementById('val-lip').innerText} g</td>
                         </tr>
-                        <tr style="text-align:center; font-size:6pt; color:#666;"><td>mEq</td> <td>mEq</td> <td>mEq</td> <td>mEq</td> <td>mEq</td> <td>mmol</td></tr>
                     </table>
+                    
+                    <table class="lbl-data-table">
+                        <tr>
+                            <th>Na+</th> <th>K+</th> <th>Cl-</th> <th>Acet</th> <th>Ca++</th> <th>Mg++</th> <th>P</th>
+                        </tr>
+                        <tr style="text-align:center;">
+                            <td>${document.getElementById('input-sodio').value}</td>
+                            <td>${document.getElementById('input-potasio').value}</td>
+                            <td>${document.getElementById('input-cloro').value}</td>
+                            <td>${document.getElementById('input-acetato').value}</td>
+                            <td>${document.getElementById('input-calcio').value}</td>
+                            <td>${document.getElementById('input-magnesio').value}</td>
+                            <td>${document.getElementById('input-fosforo').value}</td>
+                        </tr>
+                        <tr style="text-align:center; font-size:6pt; color:#666;">
+                            <td>mEq</td> <td>mEq</td> <td>mEq</td> <td>mEq</td> <td>mEq</td> <td>mEq</td> <td>mmol</td>
+                        </tr>
+                    </table>
+                    
                     <table class="lbl-data-table" style="margin-bottom:0;">
                         <tr><th width="60%">ADITIVOS / VITAMINAS</th><th>OSMOLARIDAD</th></tr>
                         <tr><td valign="top" style="height:35px;">${aditivosStr}</td><td align="center" valign="middle"><span class="lbl-val-bold" style="font-size:10pt;">${osmFinal}</span><br><span style="font-size:7pt">mOsm/L</span></td></tr>
